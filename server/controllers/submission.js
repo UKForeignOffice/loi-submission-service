@@ -281,7 +281,7 @@ function getApplicationObject(results) {
                     "feedbackConsent": trimWhitespace(results.feedback_consent),
                     "companyName": results.company_name != 'N/A' ? results.company_name : "",
                     "companyRegistrationNumber": "",
-                    "portalCustomerId": results.user_id == 0 ? "" : results.user_id,
+                    "portalCustomerId": results.user_id === 0 ? "" : results.user_id,
                     "successfulReturnDetails": {
                         "fullName": trimWhitespace(results.main_full_name),
                         "address": {
@@ -342,7 +342,7 @@ function getApplicationObject(results) {
                     "feedbackConsent": trimWhitespace(results.feedback_consent),
                     "companyName":  results.company_name != 'N/A' ? results.company_name : "",
                     "companyRegistrationNumber": "",
-                    "portalCustomerId":  results.user_id == 0 ? "" : results.user_id,
+                    "portalCustomerId":  results.user_id === 0 ? "" : results.user_id,
                     "additionalInformation": ""
                 }
             }
