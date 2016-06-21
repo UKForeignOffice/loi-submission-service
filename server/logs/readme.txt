@@ -1,0 +1,1 @@
+the logs folder needs to exist or logging breaks

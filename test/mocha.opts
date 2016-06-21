@@ -1,0 +1,3 @@
+--require ./test/common.js
+--timeout 10000
+--slow 300
