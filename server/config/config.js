@@ -1,5 +1,3 @@
-
-process.env.NODE_ENV = process.env.NODE_ENV || 'debug';
 var dotenv = require('dotenv');
 var env = dotenv.config();
 
