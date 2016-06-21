@@ -1,1 +1,1 @@
-./Jenkinsfile merge=ours
+Jenkinsfile merge=keepMine
