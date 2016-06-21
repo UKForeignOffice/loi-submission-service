@@ -1722,6 +1722,132 @@ ALTER TABLE ONLY "SubmissionAttempts"
     ADD CONSTRAINT "FK_SubmissionAttempts_Application" FOREIGN KEY (application_id) REFERENCES "Application"(application_id);
 
 
+ALTER TABLE "Application"
+ADD company_name text;
+ALTER TABLE "ExportedApplicationData"
+ADD user_id integer;
+ALTER TABLE "ExportedApplicationData"
+ADD company_name text;
+
+-- Function: populate_exportedapplicationdata(integer)
+
+-- DROP FUNCTION populate_exportedapplicationdata(integer);
+
+CREATE OR REPLACE FUNCTION populate_exportedapplicationdata(_application_id integer)
+  RETURNS integer AS
+$BODY$
+declare
+                rows_affected integer;
+BEGIN
+WITH rows AS (
+    INSERT INTO "ExportedApplicationData" (
+                    application_id,
+                    "applicationType",
+                    first_name,
+                    last_name,
+                    telephone,
+                    email,
+                    doc_count,
+                    user_ref,
+                    payment_reference,
+                    payment_amount,
+                    postage_return_title,
+                    postage_return_price,
+                    postage_send_title,
+                    postage_send_price,
+                    main_full_name,
+                    main_house_name,
+                    main_street,
+                    main_town,
+                    main_county,
+                    main_country,
+                    main_postcode,
+                    alt_full_name,
+                    alt_house_name,
+                    alt_street,
+                    alt_town,
+                    alt_county,
+                    alt_country,
+                    alt_postcode,
+                    total_docs_count_price,
+                    feedback_consent,
+                    unique_app_id,
+                    user_id,
+                    company_name,
+                    "createdAt"
+    )
+    select app.application_id,
+                aty."casebook_description" as "applicationType",
+                ud.first_name,
+                ud.last_name,
+                ud.telephone,
+                ud.email,
+        udc.doc_count,
+        aai.user_ref,
+        pymt.payment_reference,
+        pymt.payment_amount,
+        (select pa.casebook_description as postage_return_title from "UserPostageDetails" upd
+        join "PostagesAvailable" pa on upd.postage_available_id=pa.id
+        where pa.type='return' and upd.application_id=_application_id),
+        (select pa.price as postage_return_price  from "UserPostageDetails" upd
+        join "PostagesAvailable" pa on upd.postage_available_id=pa.id
+        where pa.type='return' and upd.application_id=_application_id),
+        (select pa.title as postage_send_title  from "UserPostageDetails" upd
+        join "PostagesAvailable" pa on upd.postage_available_id=pa.id
+        where pa.type='send' and upd.application_id=_application_id),
+        (select pa.price as postage_send_price from "UserPostageDetails" upd
+        join "PostagesAvailable" pa on upd.postage_available_id=pa.id
+        where pa.type='send' and upd.application_id=_application_id),
+        (select full_name AS main_full_name from "AddressDetails" addd
+        where addd.type='main' and addd.application_id=_application_id),
+        (select house_name AS main_house_name from "AddressDetails" addd
+        where addd.type='main' and addd.application_id=_application_id),
+        (select street AS main_street from "AddressDetails" addd
+        where addd.type='main' and addd.application_id=_application_id),
+        (select town AS main_town from "AddressDetails" addd
+        where addd.type='main' and addd.application_id=_application_id),
+        (select county AS main_county from "AddressDetails" addd
+        where addd.type='main' and addd.application_id=_application_id),
+        (select country AS main_country from "AddressDetails" addd
+        where addd.type='main' and addd.application_id=_application_id),
+        (select postcode AS main_postcode from "AddressDetails" addd
+        where addd.type='main' and addd.application_id=_application_id),
+        (select full_name AS alt_full_name from "AddressDetails" addd
+        where addd.type='alt' and addd.application_id=_application_id),
+        (select house_name AS alt_house_name from "AddressDetails" addd
+        where addd.type='alt' and addd.application_id=_application_id),
+        (select street AS alt_street from "AddressDetails" addd
+        where addd.type='alt' and addd.application_id=_application_id),
+        (select town AS alt_town from "AddressDetails" addd
+        where addd.type='alt' and addd.application_id=_application_id),
+        (select county AS alt_county from "AddressDetails" addd
+        where addd.type='alt' and addd.application_id=_application_id),
+        (select country AS alt_country from "AddressDetails" addd
+        where addd.type='alt' and addd.application_id=_application_id),
+        (select postcode AS alt_postcode from "AddressDetails" addd
+        where addd.type='alt' and addd.application_id=_application_id),
+        (select price AS total_doc_count_price from "UserDocumentCount"
+        where application_id=_application_id),
+        (select feedback_consent AS feedback_consent from "Application"
+        where application_id=_application_id),
+        (select unique_app_id AS unique_app_id from "Application"
+        where application_id=_application_id),
+        (select user_id AS user_id from "Application"
+        where application_id=_application_id),
+        (select company_name AS company_name from "Application"
+        where application_id=_application_id),
+        NOW()
+        from "Application" app
+        join "ApplicationTypes" aty on aty.id=app."serviceType"
+        join "UserDetails" ud on ud.application_id=app.application_id
+        join "UserDocumentCount" udc on udc.application_id=app.application_id
+        join "AdditionalApplicationInfo" aai on aai.application_id=app.application_id
+        join "ApplicationPaymentDetails" pymt on aai.application_id=pymt.application_id
+        where app.application_id=_application_id
+        and not exists(select * from "ExportedApplicationData" where application_id = _application_id)
+
+        RETURNING 1
+)
 --
 -- TOC entry 2154 (class 0 OID 0)
 -- Dependencies: 6
