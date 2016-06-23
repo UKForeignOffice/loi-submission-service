@@ -262,7 +262,7 @@ function getApplicationObject(results) {
         altCountry =  results.alt_country;
         altPostcode =  results.alt_postcode;
         casebookJSON.alt.companyName = trimWhitespace(results.alt_organisation);
-        updateCaseBookJSON('alt',trimWhitespace(results.alt_house_name))
+        updateCaseBookJSON('alt',trimWhitespace(results.alt_house_name));
     }
     else{
         altFullName = results.main_full_name;
