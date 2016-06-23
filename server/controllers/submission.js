@@ -138,7 +138,7 @@ function processSubmissionQueue(msg, callback) {
 
     ExportedApplicationData.findOne({
         attributes: ["application_id", "applicationType", "first_name", "last_name", "telephone", "email", "doc_count", "special_instructions", "user_ref", "payment_reference", "payment_amount", "postage_return_title", "postage_return_price", "postage_send_title", "postage_send_price", "main_house_name", "main_street", "main_town", "main_county", "main_country", "main_full_name", "main_postcode", "alt_house_name", "alt_street", "alt_town", "alt_county", "alt_country",
-            "alt_full_name", "alt_postcode", "feedback_consent", "total_docs_count_price", "unique_app_id", "user_id", "company_name"],
+            "alt_full_name", "alt_postcode", "feedback_consent", "total_docs_count_price", "unique_app_id", "user_id", "company_name", "main_organisation", "alt_organisation"],
         where: {
             application_id: appId
         }
@@ -401,6 +401,8 @@ function getApplicationObject(results) {
         };
     }
 
+    console.log("casebookJSON");
+    console.log(casebookJSON);
     return obj;
 }
 
