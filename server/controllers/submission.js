@@ -238,7 +238,7 @@ function getApplicationObject(results) {
 
     var casebookJSON =  {
         main: {
-            "companyName": trimWhitespace(results.main_organisation),
+            "companyName": trimWhitespace(results.main_organisation) != 'N/A' && trimWhitespace(results.main_organisation).length > 0 ? trimWhitespace(results.main_organisation) : "",
             "flatNumber": "",
             "premises": "",
             "houseNumber": ""
@@ -261,12 +261,12 @@ function getApplicationObject(results) {
         altCounty =  results.alt_county;
         altCountry =  results.alt_country;
         altPostcode =  results.alt_postcode;
-        casebookJSON.alt.companyName = trimWhitespace(results.alt_organisation);
+        casebookJSON.alt.companyName = trimWhitespace(results.alt_organisation) != 'N/A' && trimWhitespace(results.alt_organisation).length > 0 ? trimWhitespace(results.alt_organisation) : "";
         updateCaseBookJSON('alt',trimWhitespace(results.alt_house_name));
     }
     else{
         altFullName = results.main_full_name;
-        casebookJSON.alt.companyName = trimWhitespace(results.main_organisation);
+        casebookJSON.alt.companyName = casebookJSON.main.companyName;
         updateCaseBookJSON('alt',trimWhitespace(results.main_house_name));
         altStreet =  results.main_street;
         altTown = results.main_town;
@@ -337,7 +337,7 @@ function getApplicationObject(results) {
                     "successfulReturnDetails": {
                         "fullName": trimWhitespace(results.main_full_name),
                         "address": {
-                            "companyName": casebookJSON.main.companyName != 'N/A' ? casebookJSON.main.companyName :"" ,
+                            "companyName": casebookJSON.main.companyName,
                             "flatNumber": casebookJSON.main.flatNumber || "",
                             "premises": casebookJSON.main.premises ||"",
                             "houseNumber": casebookJSON.main.houseNumber || "",
@@ -352,7 +352,7 @@ function getApplicationObject(results) {
                     "unsuccessfulReturnDetails": {
                         "fullName": altFullName,
                         "address": {
-                            "companyName": casebookJSON.alt.companyName != 'N/A' ? casebookJSON.alt.companyName : "" ,
+                            "companyName": casebookJSON.alt.companyName,
                             "flatNumber": casebookJSON.alt.flatNumber || "",
                             "premises": casebookJSON.alt.premises || "",
                             "houseNumber": casebookJSON.alt.houseNumber || "",
