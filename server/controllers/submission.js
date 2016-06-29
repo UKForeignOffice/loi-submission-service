@@ -280,6 +280,7 @@ function getApplicationObject(results) {
     function updateCaseBookJSON(type,house) {
         var isNumeric = require("isnumeric");
         var house_name = house.toString().split(" ");
+        var apartments = house.indexOf('Apartments');
         if (isNumeric(house_name[0])) {
             casebookJSON[type].houseNumber = house_name[0].replace(',', '');
             casebookJSON[type].premises = house.substr(house_name[0].length + 1, house.length).replace(',', '');
@@ -289,8 +290,16 @@ function getApplicationObject(results) {
             casebookJSON[type].premises = house.substr(house_name[0].length + house_name[1].length + 1, house.length).replace(',', '');
         }
         else if (isNumeric(house_name[house_name.length - 1])) {
-            casebookJSON[type].houseNumber = house_name[house_name.length - 1];
-            casebookJSON[type].premises = house.substr(0, house.length - house_name[house_name.length - 1].length).replace(',', '');
+            casebookJSON.houseNumber = house_name[house_name.length-1];
+            if(apartments!=-1){
+                var subBuilding =  house.substr(0,house.length- house_name[house_name.length-1].length).replace(',','');
+                casebookJSON.flatNumber = subBuilding.split(" ")[0];
+                casebookJSON.premises  = subBuilding.substr(subBuilding.split(" ")[0].length, subBuilding.length-1).replace(',','') ;
+
+            }else{
+                casebookJSON.premises  =house.substr(0,house.length- house_name[house_name.length-1].length).replace(',','');
+
+            }
         }
         else if (house.length > 10) {
             casebookJSON[type].premises = house.replace(',', '');
