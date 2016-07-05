@@ -174,11 +174,11 @@ function processSubmissionQueue(msg, callback) {
                 body: applicationJsonObject
             }, function (error, response, body) {
                 if (error) {
-                    console.log(JSON.stringify(error));
+                    console.error(JSON.stringify(error));
                     callback(false, applicationJsonObject, (response.statusCode || ''), (body || ''));
                 }
                 else if (response.statusCode === 200) { // Successful submit response code
-                    console.log('Application '+appId+' has been submitted successfully');
+                    console.info('Application '+appId+' has been submitted successfully');
 
                     /*
                      * Update the application table for submit status, case reference and app reference
@@ -200,16 +200,16 @@ function processSubmissionQueue(msg, callback) {
                             callback(true, applicationJsonObject, response.statusCode, body);
                         }
                         else {
-                            console.log('Application ID ' + appId + ' not found in the database');
+                            console.error('Application ID ' + appId + ' not found in the database');
                             callback(false, applicationJsonObject, response.statusCode, body);
                         }
                     }).catch(function (error) {
-                        console.log(JSON.stringify(error));
+                        console.error(JSON.stringify(error));
                         callback(false, applicationJsonObject, response.statusCode, body);
                     });
                 } else {
-                    console.log('error: ' + response.statusCode);
-                    console.log(body);
+                    console.error('error: ' + response.statusCode);
+                    console.error(body);
                     callback(false, applicationJsonObject, response.statusCode, body);
                 }
             }
