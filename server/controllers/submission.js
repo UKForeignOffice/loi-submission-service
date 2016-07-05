@@ -151,7 +151,6 @@ function processSubmissionQueue(msg, callback) {
 
         applicationJsonObject = getApplicationObject(results.dataValues);
 
-        console.log(JSON.stringify(applicationJsonObject));
 
         // calculate HMAC string and encode in base64
         var objectString = JSON.stringify(applicationJsonObject, null, 0);
@@ -204,12 +203,12 @@ function processSubmissionQueue(msg, callback) {
                                 callback(false, applicationJsonObject, response.statusCode, body);
                             }
                         }).catch(function (error) {
-                            console.log(JSON.stringify(error));
+                            console.error(JSON.stringify(error));
                             callback(false, applicationJsonObject, response.statusCode, body);
                         });
                 } else {
-                    console.log('error: ' + response.statusCode);
-                    console.log(body);
+                    console.error('error: ' + response.statusCode);
+                    console.error(body);
                     callback(false, applicationJsonObject, response.statusCode, body);
                 }
             }
@@ -236,7 +235,6 @@ function getApplicationObject(results) {
      * Address Mapping
      */
 
-    console.log(results.main_organisation, results.alt_organisation);
     var casebookJSON =  {
         main: {
             "companyName": results.main_organisation != 'N/A' && results.main_organisation !=null && results.main_organisation != " " ? results.main_organisation : "",
@@ -411,8 +409,6 @@ function getApplicationObject(results) {
         };
     }
 
-    console.log("casebookJSON");
-    console.log(casebookJSON);
     return obj;
 }
 
