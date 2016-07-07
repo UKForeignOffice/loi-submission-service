@@ -260,12 +260,12 @@ function getApplicationObject(results) {
         altCounty =  results.alt_county;
         altCountry =  results.alt_country;
         altPostcode =  results.alt_postcode;
-        casebookJSON.alt.companyName = results.alt_organisation != 'N/A' && results.alt_organisation.length !=null && results.alt_organisation != " " ? results.alt_organisation : "";
+        casebookJSON[type].alt.companyName = results.alt_organisation != 'N/A' && results.alt_organisation.length !=null && results.alt_organisation != " " ? results.alt_organisation : "";
         updateCaseBookJSON('alt',trimWhitespace(results.alt_house_name));
     }
     else{
         altFullName = results.main_full_name;
-        casebookJSON.alt.companyName = casebookJSON.main.companyName;
+        casebookJSON[type].alt.companyName = casebookJSON[type].main.companyName;
         updateCaseBookJSON('alt',trimWhitespace(results.main_house_name));
         altStreet =  results.main_street;
         altTown = results.main_town;
@@ -279,40 +279,60 @@ function getApplicationObject(results) {
         var isNumeric = require("isnumeric");
         var house_name = house.toString().split(" ");
         var apartments = house.indexOf('Apartments');
-        if (isNumeric(house_name[0])) {
-            casebookJSON[type].houseNumber = house_name[0].replace(',', '');
-            casebookJSON[type].premises = house.substr(house_name[0].length + 1, house.length).replace(',', '');
+        var flats = house.indexOf('Flat');
+
+
+
+        if(house_name[0].toLowerCase()=="flat"  &&  isNumeric(house_name[1].replace(',','').substr(1,isNumeric(house_name[1].replace(',','').length)))){
+            casebookJSON[type].flatNumber = house_name[1].replace(',','');
+            if(isNumeric(house_name[house_name.length-1].replace("-","").replace(',',''))){
+                casebookJSON[type].houseNumber = house_name[house_name.length-1].replace(',','');
+                casebookJSON[type].premises  = house.substr(casebookJSON[type].flatNumber.length+7,house.toString().length-(casebookJSON[type].flatNumber.length+7)-(casebookJSON[type].houseNumber.length+1));
+            }else {
+                casebookJSON[type].premises = house.substr(house_name[0].length + house_name[1].length + 1, house.length).replace(',', '');
+            }
         }
-        else if (house_name[0].toLowerCase() == "flat" && isNumeric(house_name[1].replace(',', ''))) {
-            casebookJSON[type].flatNumber = house_name[1].replace(',', '');
-            casebookJSON[type].premises = house.substr(house_name[0].length + house_name[1].length + 1, house.length).replace(',', '');
-        }
-        else if (isNumeric(house_name[house_name.length - 1])) {
-            casebookJSON.houseNumber = house_name[house_name.length-1];
-            if(apartments!=-1){
+        else if(isNumeric(house_name[house_name.length-1].replace("-",""))){
+            casebookJSON[type].houseNumber = house_name[house_name.length-1];
+            if(apartments!=-1 || flats != -1){
                 var subBuilding =  house.substr(0,house.length- house_name[house_name.length-1].length).replace(',','');
-                casebookJSON.flatNumber = subBuilding.split(" ")[0];
-                casebookJSON.premises  = subBuilding.substr(subBuilding.split(" ")[0].length, subBuilding.length-1).replace(',','') ;
+                if(subBuilding.split(" ")[0].toLowerCase()=="flat"){
+                    casebookJSON[type].flatNumber = subBuilding.split(" ")[1];
+                    casebookJSON[type].premises  = subBuilding.substr(subBuilding.split(" ")[0].length+subBuilding.split(" ")[1].length+2, subBuilding.length-1).replace(',','') ;
+                }else {
+                    casebookJSON[type].flatNumber = subBuilding.split(" ")[0];
+                    casebookJSON[type].premises  = subBuilding.substr(subBuilding.split(" ")[0].length, subBuilding.length-1).replace(',','') ;
+                }
+
 
             }else{
-                casebookJSON.premises  =house.substr(0,house.length- house_name[house_name.length-1].length).replace(',','');
+                casebookJSON[type].premises  =house.substr(0,house.length- house_name[house_name.length-1].length).replace(',','');
 
             }
         }
-        else if (house.length > 10) {
-            casebookJSON[type].premises = house.replace(',', '');
+        else if(house_name[0].toLowerCase()=="flat"  && isNumeric(house_name[1].replace(',','') )){
+            casebookJSON[type].flatNumber = house_name[1].replace(',','');
+            casebookJSON[type].premises  =house.substr(house_name[0].length +house_name[1].length+1,house.length ).replace(',','');
         }
-        else if (isNumeric(house_name[0].split(/[A-Za-z]/)[0])) {
+        else if(isNumeric(house_name[0].split(/[A-Za-z]/)[0])){
             casebookJSON[type].houseNumber = house_name[0];
-            casebookJSON[type].premises = house.substr(house_name[0].length + 1, house.length).replace(',', '');
-        } else if (isNumeric(house_name[0].replace("-", ""))) {
-            casebookJSON[type].houseNumber = house_name[0].replace(',', '');
-            casebookJSON[type].premises = house.substr(house_name[0].length + 1, house.length).replace(',', '');
+            casebookJSON[type].premises  =house.substr(house_name[0].length+1,house.length ).replace(',','');
+        }else if(isNumeric(house_name[0].replace("-",""))){
+            casebookJSON[type].houseNumber = house_name[0].replace(',','');
+            casebookJSON[type].premises  =house.substr(house_name[0].length+1,house.length ).replace(',','');
+        }
+        else if(isNumeric(house_name[0].replace(",",""))){
+            casebookJSON[type].houseNumber = house_name[0].replace(',','');
+            casebookJSON[type].premises  =house.substr(house_name[0].length+1,house.length-house_name[0].length+1 ).replace(',','');
+        }
+        else if(house.length>10 ){
+            casebookJSON[type].premises =house.replace(',','');
         }
         else {
-            casebookJSON[type].premises = house;
+            casebookJSON[type].premises = house
         }
     }
+    
 
     var obj;
 
@@ -345,10 +365,10 @@ function getApplicationObject(results) {
                     "successfulReturnDetails": {
                         "fullName": trimWhitespace(results.main_full_name),
                         "address": {
-                            "companyName": casebookJSON.main.companyName,
-                            "flatNumber": casebookJSON.main.flatNumber || "",
-                            "premises": casebookJSON.main.premises ||"",
-                            "houseNumber": casebookJSON.main.houseNumber || "",
+                            "companyName": casebookJSON[type].main.companyName,
+                            "flatNumber": casebookJSON[type].main.flatNumber || "",
+                            "premises": casebookJSON[type].main.premises ||"",
+                            "houseNumber": casebookJSON[type].main.houseNumber || "",
                             "street": trimWhitespace(results.main_street),
                             "district": "",
                             "town": trimWhitespace(results.main_town) || ' ',
@@ -360,10 +380,10 @@ function getApplicationObject(results) {
                     "unsuccessfulReturnDetails": {
                         "fullName": altFullName,
                         "address": {
-                            "companyName": casebookJSON.alt.companyName,
-                            "flatNumber": casebookJSON.alt.flatNumber || "",
-                            "premises": casebookJSON.alt.premises || "",
-                            "houseNumber": casebookJSON.alt.houseNumber || "",
+                            "companyName": casebookJSON[type].alt.companyName,
+                            "flatNumber": casebookJSON[type].alt.flatNumber || "",
+                            "premises": casebookJSON[type].alt.premises || "",
+                            "houseNumber": casebookJSON[type].alt.houseNumber || "",
                             "street": trimWhitespace(altStreet) || ' ',
                             "district": "",
                             "town": trimWhitespace(altTown) || ' ',
