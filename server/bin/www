@@ -90,4 +90,11 @@ function onListening() {
     console.log('Listening on ' + bind);
 }
 
+
+var router = express.Router();
+app.use('/api/submission', router);
+router.get('/', function (req, res) {
+    res.json({message: 'is-submission-service running'});
+});
+
 module.exports = server;
