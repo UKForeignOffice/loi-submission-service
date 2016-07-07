@@ -260,12 +260,12 @@ function getApplicationObject(results) {
         altCounty =  results.alt_county;
         altCountry =  results.alt_country;
         altPostcode =  results.alt_postcode;
-        casebookJSON[type].alt.companyName = results.alt_organisation != 'N/A' && results.alt_organisation.length !==null && results.alt_organisation != " " ? results.alt_organisation : "";
+        casebookJSON.alt.companyName = results.alt_organisation != 'N/A' && results.alt_organisation.length !==null && results.alt_organisation != " " ? results.alt_organisation : "";
         updateCaseBookJSON('alt',trimWhitespace(results.alt_house_name));
     }
     else{
         altFullName = results.main_full_name;
-        casebookJSON[type].alt.companyName = casebookJSON[type].main.companyName;
+        casebookJSON.alt.companyName = casebookJSON.main.companyName;
         updateCaseBookJSON('alt',trimWhitespace(results.main_house_name));
         altStreet =  results.main_street;
         altTown = results.main_town;
