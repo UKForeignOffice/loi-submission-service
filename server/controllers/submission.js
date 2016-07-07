@@ -237,7 +237,7 @@ function getApplicationObject(results) {
 
     var casebookJSON =  {
         main: {
-            "companyName": results.main_organisation != 'N/A' && results.main_organisation !=null && results.main_organisation != " " ? results.main_organisation : "",
+            "companyName": results.main_organisation != 'N/A' && results.main_organisation !== null && results.main_organisation != " " ? results.main_organisation : "",
             "flatNumber": "",
             "premises": "",
             "houseNumber": ""
@@ -260,7 +260,7 @@ function getApplicationObject(results) {
         altCounty =  results.alt_county;
         altCountry =  results.alt_country;
         altPostcode =  results.alt_postcode;
-        casebookJSON[type].alt.companyName = results.alt_organisation != 'N/A' && results.alt_organisation.length !=null && results.alt_organisation != " " ? results.alt_organisation : "";
+        casebookJSON[type].alt.companyName = results.alt_organisation != 'N/A' && results.alt_organisation.length !==null && results.alt_organisation != " " ? results.alt_organisation : "";
         updateCaseBookJSON('alt',trimWhitespace(results.alt_house_name));
     }
     else{
@@ -329,7 +329,7 @@ function getApplicationObject(results) {
             casebookJSON[type].premises =house.replace(',','');
         }
         else {
-            casebookJSON[type].premises = house
+            casebookJSON[type].premises = house;
         }
     }
     
