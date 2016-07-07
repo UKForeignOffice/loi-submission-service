@@ -100,6 +100,18 @@ module.exports = function(sequelize, DataTypes) {
             },
             "submittedJSON": {
                 type: DataTypes.JSON
+            },
+            "user_id":{
+                type: DataTypes.INTEGER
+            },
+            "company_name":{
+                type: DataTypes.TEXT
+            },
+            "main_organisation":{
+                type: DataTypes.TEXT
+            },
+            "alt_organisation":{
+                type: DataTypes.TEXT
             }
             //"createdAt": {
             //    type: DataTypes.DATE,
