@@ -365,10 +365,10 @@ function getApplicationObject(results) {
                     "successfulReturnDetails": {
                         "fullName": trimWhitespace(results.main_full_name),
                         "address": {
-                            "companyName": casebookJSON[type].main.companyName,
-                            "flatNumber": casebookJSON[type].main.flatNumber || "",
-                            "premises": casebookJSON[type].main.premises ||"",
-                            "houseNumber": casebookJSON[type].main.houseNumber || "",
+                            "companyName": casebookJSON.main.companyName,
+                            "flatNumber": casebookJSON.main.flatNumber || "",
+                            "premises": casebookJSON.main.premises ||"",
+                            "houseNumber": casebookJSON.main.houseNumber || "",
                             "street": trimWhitespace(results.main_street),
                             "district": "",
                             "town": trimWhitespace(results.main_town) || ' ',
@@ -380,10 +380,10 @@ function getApplicationObject(results) {
                     "unsuccessfulReturnDetails": {
                         "fullName": altFullName,
                         "address": {
-                            "companyName": casebookJSON[type].alt.companyName,
-                            "flatNumber": casebookJSON[type].alt.flatNumber || "",
-                            "premises": casebookJSON[type].alt.premises || "",
-                            "houseNumber": casebookJSON[type].alt.houseNumber || "",
+                            "companyName": casebookJSON.alt.companyName,
+                            "flatNumber": casebookJSON.alt.flatNumber || "",
+                            "premises": casebookJSON.alt.premises || "",
+                            "houseNumber": casebookJSON.alt.houseNumber || "",
                             "street": trimWhitespace(altStreet) || ' ',
                             "district": "",
                             "town": trimWhitespace(altTown) || ' ',
