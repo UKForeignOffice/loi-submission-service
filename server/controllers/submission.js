@@ -331,6 +331,21 @@ function getApplicationObject(results) {
         else {
             casebookJSON[type].premises = house;
         }
+
+        //Catch all fixes
+        if(casebookJSON[type].houseNumber.length>10){
+            casebookJSON[type].premises = casebookJSON[type].houseNumber + casebookJSON[type].premises;
+            casebookJSON[type].houseNumber="";
+        }
+        if(casebookJSON[type].flatNumber.length>10){
+            casebookJSON[type].premises = 'Flat '+casebookJSON[type].flatNumber + casebookJSON[type].premises;
+            casebookJSON[type].flatNumber="";
+        }
+        //Shouldn't happen - but here just in case.
+        if(casebookJSON[type].postcode.length>15){
+            casebookJSON[type].premises = casebookJSON[type].premises+','+ casebookJSON[type].postcode ;
+            casebookJSON[type].postcode = casebookJSON[type].postcode.substr(0,14);
+        }
     }
     
 
