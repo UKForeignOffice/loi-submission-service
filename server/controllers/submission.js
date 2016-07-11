@@ -344,11 +344,6 @@ function getApplicationObject(results) {
             casebookJSON[type].premises = 'Flat '+casebookJSON[type].flatNumber + casebookJSON[type].premises;
             casebookJSON[type].flatNumber="";
         }
-        //Shouldn't happen - but here just in case.
-        if(casebookJSON[type].postcode.length>15){
-            casebookJSON[type].premises = casebookJSON[type].premises+','+ casebookJSON[type].postcode ;
-            casebookJSON[type].postcode = casebookJSON[type].postcode.substr(0,14);
-        }
     }
 
     console.log(casebookJSON);
