@@ -347,6 +347,8 @@ function getApplicationObject(results) {
             casebookJSON[type].postcode = casebookJSON[type].postcode.substr(0,14);
         }
     }
+
+    console.log(casebookJSON);
     
 
     var obj;
