@@ -1729,6 +1729,13 @@ ADD user_id integer;
 ALTER TABLE "ExportedApplicationData"
 ADD company_name text;
 
+
+ALTER TABLE "ExportedApplicationData"
+ADD main_organisation text;
+
+ALTER TABLE "ExportedApplicationData"
+ADD alt_organisation text;
+
 -- Function: populate_exportedapplicationdata(integer)
 
 -- DROP FUNCTION populate_exportedapplicationdata(integer);
@@ -1756,6 +1763,8 @@ WITH rows AS (
                     postage_send_title,
                     postage_send_price,
                     main_full_name,
+                    main_organisation,
+
                     main_house_name,
                     main_street,
                     main_town,
@@ -1763,6 +1772,7 @@ WITH rows AS (
                     main_country,
                     main_postcode,
                     alt_full_name,
+                    alt_organisation,
                     alt_house_name,
                     alt_street,
                     alt_town,
@@ -1800,6 +1810,10 @@ WITH rows AS (
         where pa.type='send' and upd.application_id=_application_id),
         (select full_name AS main_full_name from "AddressDetails" addd
         where addd.type='main' and addd.application_id=_application_id),
+
+        (select organisation AS main_organisation from "AddressDetails" addd
+        where addd.type='main' and addd.application_id=_application_id),
+
         (select house_name AS main_house_name from "AddressDetails" addd
         where addd.type='main' and addd.application_id=_application_id),
         (select street AS main_street from "AddressDetails" addd
@@ -1814,6 +1828,10 @@ WITH rows AS (
         where addd.type='main' and addd.application_id=_application_id),
         (select full_name AS alt_full_name from "AddressDetails" addd
         where addd.type='alt' and addd.application_id=_application_id),
+
+        (select organisation AS alt_organisation from "AddressDetails" addd
+        where addd.type='alt' and addd.application_id=_application_id),
+
         (select house_name AS alt_house_name from "AddressDetails" addd
         where addd.type='alt' and addd.application_id=_application_id),
         (select street AS alt_street from "AddressDetails" addd
@@ -1848,6 +1866,18 @@ WITH rows AS (
 
         RETURNING 1
 )
+
+
+SELECT count(*) into rows_affected FROM Rows;
+RETURN rows_affected;
+END;
+$BODY$
+  LANGUAGE plpgsql VOLATILE
+  COST 100;
+ALTER FUNCTION populate_exportedapplicationdata(integer)
+  OWNER TO postgres;
+
+
 --
 -- TOC entry 2154 (class 0 OID 0)
 -- Dependencies: 6

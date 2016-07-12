@@ -103,11 +103,11 @@ function startWorker() {
                             //if we have reached maxRetryAttempts, update the database to indicate failure
                             logSubmissionAttempt(appId, retryAttempts, applicationJsonObject,'failed', responseStatusCode, responseBody)
                                 .then(function (results) {
-                                //and acknowledge the message to remove it from the queue
-                                ch.ack(msg);
-                            }).catch(function (error) {
-                                console.log(JSON.stringify(error));
-                            });
+                                    //and acknowledge the message to remove it from the queue
+                                    ch.ack(msg);
+                                }).catch(function (error) {
+                                    console.log(JSON.stringify(error));
+                                });
 
                         }
                         else {
@@ -138,7 +138,7 @@ function processSubmissionQueue(msg, callback) {
 
     ExportedApplicationData.findOne({
         attributes: ["application_id", "applicationType", "first_name", "last_name", "telephone", "email", "doc_count", "special_instructions", "user_ref", "payment_reference", "payment_amount", "postage_return_title", "postage_return_price", "postage_send_title", "postage_send_price", "main_house_name", "main_street", "main_town", "main_county", "main_country", "main_full_name", "main_postcode", "alt_house_name", "alt_street", "alt_town", "alt_county", "alt_country",
-            "alt_full_name", "alt_postcode", "feedback_consent", "total_docs_count_price", "unique_app_id", "user_id", "company_name"],
+            "alt_full_name", "alt_postcode", "feedback_consent", "total_docs_count_price", "unique_app_id", "user_id", "company_name", "main_organisation", "alt_organisation"],
         where: {
             application_id: appId
         }
@@ -151,7 +151,6 @@ function processSubmissionQueue(msg, callback) {
 
         applicationJsonObject = getApplicationObject(results.dataValues);
 
-        console.log(JSON.stringify(applicationJsonObject));
 
         // calculate HMAC string and encode in base64
         var objectString = JSON.stringify(applicationJsonObject, null, 0);
@@ -226,33 +225,128 @@ function closeOnErr(err) {
 
 function getApplicationObject(results) {
     var altFullName;
-    var altHouseName;
     var altStreet;
     var altTown;
     var altCounty;
     var altCountry;
     var altPostcode;
 
+    /**
+     * Address Mapping
+     */
 
-    //if there is no altername address, copy the details from the main address
+    var casebookJSON =  {
+        main: {
+            "companyName": results.main_organisation != 'N/A' && results.main_organisation !== null && results.main_organisation != " " ? results.main_organisation : "",
+            "flatNumber": "",
+            "premises": "",
+            "houseNumber": "",
+            "postcode": results.postcode
+        },
+        alt: {
+            "companyName": "",
+            "flatNumber": "",
+            "premises": "",
+            "houseNumber": "",
+            "postcode": ""
+        }
+    };
+
+    updateCaseBookJSON('main',trimWhitespace(results.main_house_name));
+
+//if there is no altername address, copy the details from the main address
     if (results.alt_full_name){
         altFullName = results.alt_full_name;
-        altHouseName = results.alt_house_name;
         altStreet =  results.alt_street;
         altTown = results.alt_town;
         altCounty =  results.alt_county;
         altCountry =  results.alt_country;
         altPostcode =  results.alt_postcode;
+        casebookJSON.postcode =  results.alt_postcode;
+        casebookJSON.alt.companyName = results.alt_organisation && results.alt_organisation != 'N/A' && results.alt_organisation.length !== 0 && results.alt_organisation != " " ? results.alt_organisation : "";
+        updateCaseBookJSON('alt',trimWhitespace(results.alt_house_name));
     }
     else{
         altFullName = results.main_full_name;
-        altHouseName = results.main_house_name;
+        casebookJSON.alt.companyName = casebookJSON.main.companyName;
+        updateCaseBookJSON('alt',trimWhitespace(results.main_house_name));
         altStreet =  results.main_street;
         altTown = results.main_town;
         altCounty =  results.main_county;
         altCountry =  results.main_country;
         altPostcode =  results.main_postcode;
     }
+
+
+    function updateCaseBookJSON(type,house) {
+        var isNumeric = require("isnumeric");
+        var house_name = house.toString().split(" ");
+        var apartments = house.indexOf('Apartments');
+        var flats = house.indexOf('Flat');
+
+
+
+        if(house_name[0].toLowerCase()=="flat"  &&  isNumeric(house_name[1].replace(',','').substr(1,isNumeric(house_name[1].replace(',','').length)))){
+            casebookJSON[type].flatNumber = house_name[1].replace(',','');
+            if(isNumeric(house_name[house_name.length-1].replace("-","").replace(',',''))){
+                casebookJSON[type].houseNumber = house_name[house_name.length-1].replace(',','');
+                casebookJSON[type].premises  = house.substr(casebookJSON[type].flatNumber.length+7,house.toString().length-(casebookJSON[type].flatNumber.length+7)-(casebookJSON[type].houseNumber.length+1));
+            }else {
+                casebookJSON[type].premises = house.substr(house_name[0].length + house_name[1].length + 1, house.length).replace(',', '');
+            }
+        }
+        else if(isNumeric(house_name[house_name.length-1].replace("-",""))){
+            casebookJSON[type].houseNumber = house_name[house_name.length-1];
+            if(apartments!=-1 || flats != -1){
+                var subBuilding =  house.substr(0,house.length- house_name[house_name.length-1].length).replace(',','');
+                if(subBuilding.split(" ")[0].toLowerCase()=="flat"){
+                    casebookJSON[type].flatNumber = subBuilding.split(" ")[1];
+                    casebookJSON[type].premises  = subBuilding.substr(subBuilding.split(" ")[0].length+subBuilding.split(" ")[1].length+2, subBuilding.length-1).replace(',','') ;
+                }else {
+                    casebookJSON[type].flatNumber = subBuilding.split(" ")[0];
+                    casebookJSON[type].premises  = subBuilding.substr(subBuilding.split(" ")[0].length, subBuilding.length-1).replace(',','') ;
+                }
+
+
+            }else{
+                casebookJSON[type].premises  =house.substr(0,house.length- house_name[house_name.length-1].length).replace(',','');
+
+            }
+        }
+        else if(house_name[0].toLowerCase()=="flat"  && isNumeric(house_name[1].replace(',','') )){
+            casebookJSON[type].flatNumber = house_name[1].replace(',','');
+            casebookJSON[type].premises  =house.substr(house_name[0].length +house_name[1].length+1,house.length ).replace(',','');
+        }
+        else if(isNumeric(house_name[0].split(/[A-Za-z]/)[0])){
+            casebookJSON[type].houseNumber = house_name[0];
+            casebookJSON[type].premises  =house.substr(house_name[0].length+1,house.length ).replace(',','');
+        }else if(isNumeric(house_name[0].replace("-",""))){
+            casebookJSON[type].houseNumber = house_name[0].replace(',','');
+            casebookJSON[type].premises  =house.substr(house_name[0].length+1,house.length ).replace(',','');
+        }
+        else if(isNumeric(house_name[0].replace(",",""))){
+            casebookJSON[type].houseNumber = house_name[0].replace(',','');
+            casebookJSON[type].premises  =house.substr(house_name[0].length+1,house.length-house_name[0].length+1 ).replace(',','');
+        }
+        else if(house.length>10 ){
+            casebookJSON[type].premises =house.replace(',','');
+        }
+        else {
+            casebookJSON[type].premises = house;
+        }
+
+        //Catch all fixes
+        if(casebookJSON[type].houseNumber.length>10){
+            casebookJSON[type].premises = casebookJSON[type].houseNumber + casebookJSON[type].premises;
+            casebookJSON[type].houseNumber="";
+        }
+        if(casebookJSON[type].flatNumber.length>10){
+            casebookJSON[type].premises = 'Flat '+casebookJSON[type].flatNumber + casebookJSON[type].premises;
+            casebookJSON[type].flatNumber="";
+        }
+    }
+
+    
 
     var obj;
 
@@ -285,10 +379,10 @@ function getApplicationObject(results) {
                     "successfulReturnDetails": {
                         "fullName": trimWhitespace(results.main_full_name),
                         "address": {
-                            "companyName": "",
-                            "flatNumber": "",
-                            "premises": "",
-                            "houseNumber": trimWhitespace(results.main_house_name),
+                            "companyName": casebookJSON.main.companyName,
+                            "flatNumber": casebookJSON.main.flatNumber || "",
+                            "premises": casebookJSON.main.premises ||"",
+                            "houseNumber": casebookJSON.main.houseNumber || "",
                             "street": trimWhitespace(results.main_street),
                             "district": "",
                             "town": trimWhitespace(results.main_town) || ' ',
@@ -300,10 +394,10 @@ function getApplicationObject(results) {
                     "unsuccessfulReturnDetails": {
                         "fullName": altFullName,
                         "address": {
-                            "companyName": "",
-                            "flatNumber": "",
-                            "premises": "",
-                            "houseNumber": trimWhitespace(altHouseName),
+                            "companyName": casebookJSON.alt.companyName,
+                            "flatNumber": casebookJSON.alt.flatNumber || "",
+                            "premises": casebookJSON.alt.premises || "",
+                            "houseNumber": casebookJSON.alt.houseNumber || "",
                             "street": trimWhitespace(altStreet) || ' ',
                             "district": "",
                             "town": trimWhitespace(altTown) || ' ',
@@ -373,12 +467,12 @@ function trimWhitespace(input) {
 function logSubmissionAttempt(application_id, retry_number, submitted_json, status, response_status_code, response_body){
     //return promise
     return SubmissionAttempts.create({
-            application_id: application_id,
-            retry_number: retry_number || 0,
-            submitted_json: submitted_json,
-            status:  status,
-            response_status_code: response_status_code,
-            response_body: JSON.stringify(response_body)
-        });
+        application_id: application_id,
+        retry_number: retry_number || 0,
+        submitted_json: submitted_json,
+        status:  status,
+        response_status_code: response_status_code,
+        response_body: JSON.stringify(response_body)
+    });
 }
 
