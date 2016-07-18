@@ -6,14 +6,15 @@
     "async": "^1.5.2",
     "body-parser": "^1.14.2",
     "chai": "^3.4.1",
+    "dotenv": "^2.0.0",
     "expect": "^1.13.4",
     "express": "^4.13.3",
+    "isnumeric": "^0.3.1",
     "istanbul": "^0.4.2",
     "jshint": "^2.9.1",
     "mocha": "^2.3.4",
     "pg": "^4.4.3",
     "pg-hstore": "^2.3.2",
-    "dotenv": "^2.0.0",
     "request": "^2.67.0",
     "sequelize": "^3.12.1",
     "should": "^8.1.1",
@@ -28,6 +29,6 @@
     "test": "NODE_ENV=test PORT=6000 node node_modules/mocha/bin/mocha --recursive -R xunit-file test/ > test-reports.xml",
     "test-win": "node node_modules/mocha/bin/mocha --recursive -R spec test/",
     "coverage": "NODE_ENV=test PORT=6000 node ./node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha -- --recursive -R tap \"test/\" > test.tap && istanbul report clover",
-    "lint": "jshint --reporter checkstyle . > linting.xml" 
+    "lint": "jshint --reporter checkstyle . > linting.xml"
   }
 }
