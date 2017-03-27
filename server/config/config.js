@@ -1,5 +1,5 @@
 var dotenv = require('dotenv');
-var env = dotenv.config();
+var env = dotenv.config({path: process.env.DOTENV || '.env'});
 
 var rabbitMq = JSON.parse(env.RABBITMQ);
 var serverUrl = env.SERVERURL;
