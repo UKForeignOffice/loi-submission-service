@@ -137,8 +137,8 @@ function processSubmissionQueue(msg, callback) {
 
 
     ExportedApplicationData.findOne({
-        attributes: ["application_id", "applicationType", "first_name", "last_name", "telephone", "email", "doc_count", "special_instructions", "user_ref", "payment_reference", "payment_amount", "postage_return_title", "postage_return_price", "postage_send_title", "postage_send_price", "main_house_name", "main_street", "main_town", "main_county", "main_country", "main_full_name", "main_postcode", "alt_house_name", "alt_street", "alt_town", "alt_county", "alt_country",
-            "alt_full_name", "alt_postcode", "feedback_consent", "total_docs_count_price", "unique_app_id", "user_id", "company_name", "main_organisation", "alt_organisation"],
+        attributes: ["application_id", "applicationType", "first_name", "last_name", "telephone", "email", "doc_count", "special_instructions", "user_ref", "payment_reference", "payment_amount", "postage_return_title", "postage_return_price", "postage_send_title", "postage_send_price", "main_house_name", "main_street", "main_town", "main_county", "main_country", "main_full_name", "main_postcode", "main_telephone", "main_email", "alt_house_name", "alt_street", "alt_town", "alt_county", "alt_country",
+            "alt_full_name", "alt_postcode", "alt_telephone", "alt_email", "feedback_consent", "total_docs_count_price", "unique_app_id", "user_id", "company_name", "main_organisation", "alt_organisation"],
         where: {
             application_id: appId
         }
@@ -161,7 +161,8 @@ function processSubmissionQueue(msg, callback) {
                 headers: {
                     "accept": "application/json",
                     "hash": hash,
-                    "content-type": "application/json; charset=utf-8"
+                    "content-type": "application/json; charset=utf-8",
+                    "api-version": "2"
                 },
                 url: submissionApiUrl,
                 //proxy: 'http://ldnisprx01:8080', //uncomment this line if running in your own debug environment
@@ -230,6 +231,8 @@ function getApplicationObject(results) {
     var altCounty;
     var altCountry;
     var altPostcode;
+    var altTelephone;
+    var altEmail;
 
     /**
      * Address Mapping
@@ -254,7 +257,7 @@ function getApplicationObject(results) {
 
     updateCaseBookJSON('main',trimWhitespace(results.main_house_name));
 
-//if there is no altername address, copy the details from the main address
+//if there is no alternate address, copy the details from the main address
     if (results.alt_full_name){
         altFullName = results.alt_full_name;
         altStreet =  results.alt_street;
@@ -262,6 +265,8 @@ function getApplicationObject(results) {
         altCounty =  results.alt_county;
         altCountry =  results.alt_country;
         altPostcode =  results.alt_postcode;
+        altTelephone = results.alt_telephone;
+        altEmail = results.alt_email;
         casebookJSON.postcode =  results.alt_postcode;
         casebookJSON.alt.companyName = results.alt_organisation && results.alt_organisation != 'N/A' && results.alt_organisation.length !== 0 && results.alt_organisation != " " ? results.alt_organisation : "";
         updateCaseBookJSON('alt',trimWhitespace(results.alt_house_name));
@@ -275,6 +280,8 @@ function getApplicationObject(results) {
         altCounty =  results.main_county;
         altCountry =  results.main_country;
         altPostcode =  results.main_postcode;
+        altTelephone = results.main_telephone;
+        altEmail = results.main_email;
     }
 
 
@@ -390,7 +397,9 @@ function getApplicationObject(results) {
                             "region": trimWhitespace(results.main_county) || ' ',
                             "postcode": trimWhitespace(results.main_postcode),
                             "country": trimWhitespace(results.main_country || 'United Kingdom')
-                        }
+                        },
+                        "telephone": trimWhitespace(results.main_telephone || ""),
+                        "email": trimWhitespace(results.main_email || "")
                     },
                     "unsuccessfulReturnDetails": {
                         "fullName": altFullName,
@@ -405,7 +414,9 @@ function getApplicationObject(results) {
                             "region": trimWhitespace(altCounty),
                             "postcode": trimWhitespace(altPostcode),
                             "country": trimWhitespace(altCountry || 'United Kingdom')
-                        }
+                        },
+                        "telephone": trimWhitespace(altTelephone || ""),
+                        "email": trimWhitespace(altEmail || "")
                     },
                     "additionalInformation": ""
                 }
