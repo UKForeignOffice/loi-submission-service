@@ -68,6 +68,12 @@ module.exports = function(sequelize, DataTypes) {
             "main_full_name": {
                 type: DataTypes.TEXT
             },
+            "main_telephone": {
+                type: DataTypes.TEXT
+            },
+            "main_email": {
+                type: DataTypes.TEXT
+            },
             "alt_house_name": {
                 type: DataTypes.TEXT
             },
@@ -87,6 +93,12 @@ module.exports = function(sequelize, DataTypes) {
                 type: DataTypes.TEXT
             },
             "alt_full_name": {
+                type: DataTypes.TEXT
+            },
+            "alt_telephone": {
+                type: DataTypes.TEXT
+            },
+            "alt_email": {
                 type: DataTypes.TEXT
             },
             "feedback_consent": {
