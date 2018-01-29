@@ -162,7 +162,7 @@ function processSubmissionQueue(msg, callback) {
                     "accept": "application/json",
                     "hash": hash,
                     "content-type": "application/json; charset=utf-8",
-                    "api-version": "2"
+                    "api-version": "3"
                 },
                 url: submissionApiUrl,
                 //proxy: 'http://ldnisprx01:8080', //uncomment this line if running in your own debug environment
@@ -352,9 +352,6 @@ function getApplicationObject(results) {
             casebookJSON[type].flatNumber="";
         }
     }
-
-    console.log(casebookJSON);
-    
 
     var obj;
 
