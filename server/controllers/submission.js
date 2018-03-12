@@ -175,7 +175,7 @@ function processSubmissionQueue(msg, callback) {
             }, function (error, response, body) {
                 if (error) {
                     console.log(JSON.stringify(error));
-                    callback(false, applicationJsonObject, (response.statusCode || ''), (body || ''));
+                    callback(false, applicationJsonObject, (response ? response.statusCode : ''), (body || ''));
                 }
                 else if (response.statusCode === 200) { // Successful submit response code
                     console.log('Application '+appId+' has been submitted successfully');
