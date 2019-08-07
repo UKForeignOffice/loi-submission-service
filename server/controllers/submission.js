@@ -366,7 +366,7 @@ function getApplicationObject(results) {
                     "forenames": trimWhitespace(results.first_name),
                     "surname": trimWhitespace(results.last_name),
                     "primaryTelephone": trimWhitespace(results.telephone),
-                    "mobileTelephone": "",
+                    "mobileTelephone": trimWhitespace(results.mobileNo),
                     "eveningTelephone": "",
                     "email": trimWhitespace(results.email)
                 },
@@ -396,6 +396,7 @@ function getApplicationObject(results) {
                             "country": trimWhitespace(results.main_country || 'United Kingdom')
                         },
                         "telephone": trimWhitespace(results.main_telephone || ""),
+                        "mobileNo": trimWhitespace(results.main_mobileNo || ""),
                         "email": trimWhitespace(results.main_email || "")
                     },
                     "unsuccessfulReturnDetails": {
@@ -431,7 +432,7 @@ function getApplicationObject(results) {
                     "forenames": trimWhitespace(results.first_name),
                     "surname": trimWhitespace(results.last_name),
                     "primaryTelephone": trimWhitespace(results.telephone),
-                    "mobileTelephone": "",
+                    "mobileTelephone": trimWhitespace(results.mobileNo),
                     "eveningTelephone": "",
                     "email": trimWhitespace(results.email)
                 },
