@@ -17,6 +17,9 @@ module.exports = function(sequelize, DataTypes) {
             "telephone": {
                 type: DataTypes.STRING(12)
             },
+            "mobileNo": {
+                type: DataTypes.STRING(12)
+            },
             "email": {
                 type: DataTypes.STRING(255)
             },
@@ -71,6 +74,9 @@ module.exports = function(sequelize, DataTypes) {
             "main_telephone": {
                 type: DataTypes.TEXT
             },
+            "main_mobileNo": {
+                type: DataTypes.TEXT
+            },
             "main_email": {
                 type: DataTypes.TEXT
             },
@@ -96,6 +102,9 @@ module.exports = function(sequelize, DataTypes) {
                 type: DataTypes.TEXT
             },
             "alt_telephone": {
+                type: DataTypes.TEXT
+            },
+            "alt_mobileNo": {
                 type: DataTypes.TEXT
             },
             "alt_email": {
