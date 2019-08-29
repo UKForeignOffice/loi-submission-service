@@ -359,7 +359,6 @@ function getApplicationObject(results) {
     var obj;
 
     if(results.applicationType == "Postal Service") {
-        console.info("results 1 " , results)
         obj = {
             "legalisationApplication": {
                 "userId": "legalisation",
@@ -427,8 +426,6 @@ function getApplicationObject(results) {
     }
 
     else {
-        console.info("results 2 " , results)
-
         obj = {
             "legalisationApplication": {
                 "userId": "legalisation",
