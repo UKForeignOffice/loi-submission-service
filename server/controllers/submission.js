@@ -137,8 +137,8 @@ function processSubmissionQueue(msg, callback) {
 
 
     ExportedApplicationData.findOne({
-        attributes: ["application_id", "applicationType", "first_name", "last_name", "telephone", "mobileNo", "email", "doc_count", "special_instructions", "user_ref", "payment_reference", "payment_amount", "postage_return_title", "postage_return_price", "postage_send_title", "postage_send_price", "main_house_name", "main_street", "main_town", "main_county", "main_country", "main_full_name", "main_postcode", "main_telephone", "main_email", "alt_house_name", "alt_street", "alt_town", "alt_county", "alt_country",
-            "alt_full_name", "alt_postcode", "alt_telephone", "alt_email", "feedback_consent", "total_docs_count_price", "unique_app_id", "user_id", "company_name", "main_organisation", "alt_organisation"],
+        attributes: ["application_id", "applicationType", "first_name", "last_name", "telephone", "mobileNo", "email", "doc_count", "special_instructions", "user_ref", "payment_reference", "payment_amount", "postage_return_title", "postage_return_price", "postage_send_title", "postage_send_price", "main_house_name", "main_street", "main_town", "main_county", "main_country", "main_full_name", "main_postcode", "main_telephone", "main_mobileNo", "main_email", "alt_house_name", "alt_street", "alt_town", "alt_county", "alt_country",
+            "alt_full_name", "alt_postcode", "alt_telephone","alt_mobileNo", "alt_email", "feedback_consent", "total_docs_count_price", "unique_app_id", "user_id", "company_name", "main_organisation", "alt_organisation"],
         where: {
             application_id: appId
         }
@@ -232,6 +232,7 @@ function getApplicationObject(results) {
     var altCountry;
     var altPostcode;
     var altTelephone;
+    var altMobileNo;
     var altEmail;
 
     /**
@@ -266,6 +267,7 @@ function getApplicationObject(results) {
         altCountry =  results.alt_country;
         altPostcode =  results.alt_postcode;
         altTelephone = results.alt_telephone;
+        altMobileNo = results.alt_mobileNo;
         altEmail = results.alt_email;
         casebookJSON.postcode =  results.alt_postcode;
         casebookJSON.alt.companyName = results.alt_organisation && results.alt_organisation != 'N/A' && results.alt_organisation.length !== 0 && results.alt_organisation != " " ? results.alt_organisation : "";
@@ -281,6 +283,7 @@ function getApplicationObject(results) {
         altCountry =  results.main_country;
         altPostcode =  results.main_postcode;
         altTelephone = results.main_telephone;
+        altMobileNo = results.main_mobileNo;
         altEmail = results.main_email;
     }
 
@@ -413,6 +416,7 @@ function getApplicationObject(results) {
                             "country": trimWhitespace(altCountry || 'United Kingdom')
                         },
                         "telephone": trimWhitespace(altTelephone || ""),
+                        "mobileNo": trimWhitespace(altMobileNo || ""),
                         "email": trimWhitespace(altEmail || "")
                     },
                     "additionalInformation": ""
