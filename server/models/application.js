@@ -8,7 +8,10 @@ module.exports = function(sequelize, DataTypes) {
             submitted: {
                 type: DataTypes.STRING()
             },
-            application_reference: {
+            serviceType: {
+                type: DataTypes.INTEGER()
+            },
+            unique_app_id: {
                 type: DataTypes.STRING()
             },
             case_reference: {

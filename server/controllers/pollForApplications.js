@@ -1,136 +1,82 @@
-var rabbit = require('amqplib/callback_api');
 var Sequelize = require('sequelize');
 var request = require('request');
 var crypto = require('crypto');
 var fs = require('fs');
 var config = require('../config/config');
-var amqpConn = null;
 var sequelize = new Sequelize(config.db);
 var ExportedApplicationData = sequelize.import("../models/exportedApplicationData");
 var Application = sequelize.import("../models/application");
 var SubmissionAttempts = sequelize.import("../models/submissionAttempts");
 
-function startQueue() {
-    rabbit.connect(config.rabbitMQ.url + "?heartbeat=60", function (err, conn) {
-        if (err) {
-            console.error("[AMQP]", err.message);
-            return setTimeout(startQueue, 1000);
+function checkForApplications() {
+    Application.findOne({
+        where: {
+            submitted: 'queued'
         }
-        conn.on("error", function (err) {
-            if (err.message !== "Connection closing") {
-                console.error("[AMQP] conn error", err.message);
+    }).then(function (results) {
+
+        // results.forEach(function(queuedApplication) {
+        //     console.log(queuedApplication.application_id);
+        // })
+            // console.log('queued applications', results)
+
+        processMsg(results.dataValues.application_id)
+
+        })
+}
+
+function processMsg(msg) {
+    processSubmissionQueue(msg, function (ok, applicationJsonObject, responseStatusCode, responseBody) {
+        // var headers = msg.properties.headers;
+        var headers = 1;
+        var appId = msg;
+        try {
+            if (ok) {
+                // ch.ack(msg);
+                logSubmissionAttempt(appId, headers.retryAttempts, applicationJsonObject,'submitted', responseStatusCode, responseBody);
             }
-        });
-        conn.on("close", function () {
-            console.error("[AMQP] reconnecting");
-            return setTimeout(startQueue, 1000);
-        });
-        console.log("[AMQP] connected");
-        amqpConn = conn;
-        whenConnected();
-    });
-}
+            else {
+                // If the API request fails
+                //second argument is requeue - false will move the message to the submission queue
+                //where it will be dead-lettered back to the main queue
+                //after the retry interval set in the config
 
-function whenConnected() {
-    startWorker();
-}
-
-
-// A worker that acks messages only if processed succesfully
-function startWorker() {
-    amqpConn.createChannel(function (err, ch) {
-        if (closeOnErr(err)) return;
-        ch.on("error", function (err) {
-            console.error("[AMQP] channel error", err.message);
-        });
-
-        ch.on("close", function () {
-            console.log("[AMQP] channel closed");
-        });
-
-        //ch.prefetch(10);
-        var queueName = config.rabbitMQ.queueName;
-        var exchangeName = config.rabbitMQ.exchangeName;
-        var retryQueue = config.rabbitMQ.retryQueue;
-        var retryExchange = config.rabbitMQ.retryExchange;
-
-        ch.assertExchange(retryExchange, 'fanout', {durable: true}, function (err, ok) {
-            ch.assertQueue(retryQueue, {
-                durable: true,
-                deadLetterExchange: exchangeName,
-                messageTtl: config.rabbitMQ.retryDelay,
-                deadLetterRoutingKey: queueName
-            }, function (err, ok) {
-                ch.bindQueue(retryQueue, retryExchange, '', null, function (err, ok) {
-                    ch.assertExchange(exchangeName, 'fanout', {durable: true}, function (err, ok) {
-                        ch.assertQueue(queueName, {
-                            durable: true
-                        }, function (err, ok) {
-                            ch.bindQueue(queueName, exchangeName, '', null, function (err, ok) {
-                                if (closeOnErr(err)) return;
-                                ch.consume(queueName, processMsg, {noAck: false});
-                                console.log(" [*] Waiting for messages in %s queue", queueName);
-                            });
-                        });
-                    });
-                });
-            });
-        });
-
-
-        function processMsg(msg) {
-            processSubmissionQueue(msg, function (ok, applicationJsonObject, responseStatusCode, responseBody) {
-                var headers = msg.properties.headers;
-                var appId = msg.content.toString();
-                try {
-                    if (ok) {
-                        ch.ack(msg);
-                        logSubmissionAttempt(appId, headers.retryAttempts, applicationJsonObject,'submitted', responseStatusCode, responseBody);
-                    }
-                    else {
-                        // If the API request fails
-                        //second argument is requeue - false will move the message to the submission queue
-                        //where it will be dead-lettered back to the main queue
-                        //after the retry interval set in the config
-
-                        var retryAttempts = 1;
-                        if (headers.retryAttempts) {
-                            retryAttempts = headers.retryAttempts + 1;
-                        }
-                        var maxRetryAttempts = config.rabbitMQ.maxRetryAttempts;
-
-                        if (retryAttempts > maxRetryAttempts) {
-                            //if we have reached maxRetryAttempts, update the database to indicate failure
-                            logSubmissionAttempt(appId, retryAttempts, applicationJsonObject,'failed', responseStatusCode, responseBody)
-                                .then(function (results) {
-                                    //and acknowledge the message to remove it from the queue
-                                    ch.ack(msg);
-                                }).catch(function (error) {
-                                    console.log(JSON.stringify(error));
-                                });
-
-                        }
-                        else {
-                            //reject the message to remove it from the main queue
-                            ch.reject(msg, false);
-                            //increment the retry attempts in the header
-                            var messageOptions = {headers: {retryAttempts: retryAttempts}};
-                            //and publish it to the retryQueue where it will be dead-lettered after the configured retryDelay
-                            //and thus moved back to the main queue which must be configured as the dead-letter queue for the retryQueue
-                            ch.publish(retryExchange, retryQueue, new Buffer(msg.content.toString()), messageOptions);
-                            logSubmissionAttempt(appId, retryAttempts, applicationJsonObject,'failed', responseStatusCode, responseBody);
-                        }
-                    }
-                } catch (e) {
-                    closeOnErr(e);
+                var retryAttempts = 1;
+                if (headers.retryAttempts) {
+                    retryAttempts = headers.retryAttempts + 1;
                 }
-            });
+                var maxRetryAttempts = config.rabbitMQ.maxRetryAttempts;
+
+                if (retryAttempts > maxRetryAttempts) {
+                    //if we have reached maxRetryAttempts, update the database to indicate failure
+                    logSubmissionAttempt(appId, retryAttempts, applicationJsonObject,'failed', responseStatusCode, responseBody)
+                        .then(function (results) {
+                            //and acknowledge the message to remove it from the queue
+                            ch.ack(msg);
+                        }).catch(function (error) {
+                        console.log(JSON.stringify(error));
+                    });
+
+                }
+                else {
+                    //reject the message to remove it from the main queue
+                    // ch.reject(msg, false);
+                    //increment the retry attempts in the header
+                    var messageOptions = {headers: {retryAttempts: retryAttempts}};
+                    //and publish it to the retryQueue where it will be dead-lettered after the configured retryDelay
+                    //and thus moved back to the main queue which must be configured as the dead-letter queue for the retryQueue
+                    // ch.publish(retryExchange, retryQueue, new Buffer(msg.content.toString()), messageOptions);
+                    logSubmissionAttempt(appId, retryAttempts, applicationJsonObject,'failed', responseStatusCode, responseBody);
+                }
+            }
+        } catch (e) {
+            console.log(e);
         }
     });
 }
 
 function processSubmissionQueue(msg, callback) {
-    var appId = msg.content.toString();
+    var appId = msg;
     console.log("Got msg ", appId);
     var submissionApiUrl = config.submissionApiUrl;
     var applicationJsonObject = {};
@@ -167,14 +113,15 @@ function processSubmissionQueue(msg, callback) {
                 url: submissionApiUrl,
                 //proxy: 'http://ldnisprx01:8080', //uncomment this line if running in your own debug environment
                 agentOptions: config.certificatePath ? {
-                    cert: fs.readFileSync(config.certificatePath),
-                    key: fs.readFileSync(config.keyPath)
+                    cert: config.certificatePath,
+                    key: config.keyPath
                 } : null,
                 json: true,
                 body: applicationJsonObject
             }, function (error, response, body) {
                 if (error) {
-                    console.log(JSON.stringify(error));
+                    // console.log(JSON.stringify(error));
+                    console.log(error);
                     callback(false, applicationJsonObject, (response ? response.statusCode : ''), (body || ''));
                 }
                 else if (response.statusCode === 200) { // Successful submit response code
@@ -195,18 +142,18 @@ function processSubmissionQueue(msg, callback) {
                             }
                         }
                     ).then(function (results) {
-                            if (results && results[0] === 1) {
-                                //all finished processing - acknowledge the message from the queue so it can be removed
-                                callback(true, applicationJsonObject, response.statusCode, body);
-                            }
-                            else {
-                                console.log('Application ID ' + appId + ' not found in the database');
-                                callback(false, applicationJsonObject, response.statusCode, body);
-                            }
-                        }).catch(function (error) {
-                            console.error(JSON.stringify(error));
+                        if (results && results[0] === 1) {
+                            //all finished processing - acknowledge the message from the queue so it can be removed
+                            callback(true, applicationJsonObject, response.statusCode, body);
+                        }
+                        else {
+                            console.log('Application ID ' + appId + ' not found in the database');
                             callback(false, applicationJsonObject, response.statusCode, body);
-                        });
+                        }
+                    }).catch(function (error) {
+                        console.error(JSON.stringify(error));
+                        callback(false, applicationJsonObject, response.statusCode, body);
+                    });
                 } else {
                     console.error('error: ' + response.statusCode);
                     console.error(body);
@@ -215,13 +162,6 @@ function processSubmissionQueue(msg, callback) {
             }
         );
     });
-}
-
-function closeOnErr(err) {
-    if (!err) return false;
-    console.error("[AMQP] error", err);
-    amqpConn.close();
-    return true;
 }
 
 function getApplicationObject(results) {
@@ -459,12 +399,6 @@ function getApplicationObject(results) {
     return obj;
 }
 
-//exposed methods
-exports.initQueue = function () {
-    // startQueue();
-    startWorker()
-};
-
 function trimWhitespace(input) {
     if ((typeof input) === "string") {
         return input.replace(/^\s+|\s+$/gm, '');
@@ -490,3 +424,7 @@ function logSubmissionAttempt(application_id, retry_number, submitted_json, stat
     });
 }
 
+//exposed methods
+exports.checkForApplications = function () {
+    checkForApplications();
+};
