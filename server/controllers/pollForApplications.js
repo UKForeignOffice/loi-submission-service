@@ -1,12 +1,13 @@
 var Sequelize = require('sequelize');
 var request = require('request');
 var crypto = require('crypto');
-var fs = require('fs');
 var config = require('../config/config');
 var sequelize = new Sequelize(config.db);
 var ExportedApplicationData = sequelize.import("../models/exportedApplicationData");
 var Application = sequelize.import("../models/application");
 var SubmissionAttempts = sequelize.import("../models/submissionAttempts");
+var pg = require('pg');
+delete pg.native;
 
 function checkForApplications() {
     Application.findOne({
@@ -14,14 +15,20 @@ function checkForApplications() {
             submitted: 'queued'
         }
     }).then(function (results) {
+        console.log("results", results)
 
+        if (!results){
+            console.log("no results returned")
+            return 'no results returned'
+        } else {
+            processMsg(results.dataValues.application_id)
+        }
         // results.forEach(function(queuedApplication) {
         //     console.log(queuedApplication.application_id);
         // })
             // console.log('queued applications', results)
-
-        processMsg(results.dataValues.application_id)
-
+// if(re)
+//         processMsg(results.dataValues.application_id)
         })
 }
 
