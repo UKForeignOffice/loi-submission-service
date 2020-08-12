@@ -35,7 +35,7 @@ function processMsg(appId, retryAttempts) {
         try {
             if (ok) {
                 // ch.ack(msg);
-                logSubmissionAttempt(appId, headers.retryAttempts, applicationJsonObject,'submitted', responseStatusCode, responseBody);
+                logSubmissionAttempt(appId, retryAttempts, applicationJsonObject,'submitted', responseStatusCode, responseBody);
             }
             else {
                 // If the API request fails
