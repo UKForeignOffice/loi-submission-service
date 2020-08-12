@@ -14,55 +14,24 @@ var maxRetryAttempts = config.maxRetryAttempts;
 function checkForApplications() {
     Application.findOne({
         where: {
-            submitted: 'queued'
+            submitted: 'queued',
+            submissionAttempts: {
+                "$lte": maxRetryAttempts
+            }
         }
     }).then(function (results) {
             if (!results) {
                 return
             } else {
-                SubmissionAttempts.count({
-                        where: {
-                            application_id: results.dataValues.application_id
-                        }
-                    }
-                ).then(function (retryAttempts) {
-                        if (retryAttempts >= maxRetryAttempts) {
-                            console.log(`${results.dataValues.application_id} submission attempts reached, not trying again: ${retryAttempts}`)
-                            Application.update(
-                                {
-                                    submitted: 'failed'
-                                }, {
-                                    where: {
-                                        application_id: results.dataValues.application_id
-                                    }
-                                }
-                            ).then(function (failedAppUpdate) {
-
-                                console.log(`failedAppUpdate`, failedAppUpdate)
-                                console.log(`Updated ${results.dataValues.application_id} submission status to failed`)
-                            })
-                            return
-                        } else {
-                            processMsg(results.dataValues.application_id)
-                        }
-                    }
-                )
+                console.log('applications to process', results)
+                processMsg(results.dataValues.application_id, results.dataValues.submissionAttempts)
             }
         }
     )
 }
 
-function processMsg(appId) {
+function processMsg(appId, retryAttempts) {
     processSubmissionQueue(appId, function (ok, applicationJsonObject, responseStatusCode, responseBody) {
-
-        SubmissionAttempts.count({
-                where: {
-                    application_id: appId
-                }
-            }
-        ).then(function (retryAttempts) {
-            console.log(`${appId} submission attempts: ${retryAttempts}`)
-
         try {
             if (ok) {
                 // ch.ack(msg);
@@ -73,11 +42,12 @@ function processMsg(appId) {
                 //second argument is requeue - false will move the message to the submission queue
                 //where it will be dead-lettered back to the main queue
                 //after the retry interval set in the config
+                retryAttempts = retryAttempts + 1
+
                 console.log('maxRetryAttempts', maxRetryAttempts)
                 console.log('retryAttempts', retryAttempts)
 
-
-                if (retryAttempts > maxRetryAttempts) {
+                if (retryAttempts >= maxRetryAttempts) {
                     console.log('Retry Attempt limit reached')
                     //if we have reached maxRetryAttempts, update the database to indicate failure
                     logSubmissionAttempt(appId, retryAttempts, applicationJsonObject,'failed', responseStatusCode, responseBody)
@@ -104,16 +74,28 @@ function processMsg(appId) {
                     // ch.reject(msg, false);
                     //increment the retry attempts in the header
                     var messageOptions = {headers: {retryAttempts: retryAttempts}};
+
+                    Application.update(
+                        {
+                            submissionAttempts: retryAttempts
+                        }, {
+                            where: {
+                                application_id: appId
+                            }
+                        }
+                    ).then(function(){
+                        logSubmissionAttempt(appId, retryAttempts, applicationJsonObject,'failed', responseStatusCode, responseBody);
+                    })
+
                     //and publish it to the retryQueue where it will be dead-lettered after the configured retryDelay
                     //and thus moved back to the main queue which must be configured as the dead-letter queue for the retryQueue
                     // ch.publish(retryExchange, retryQueue, new Buffer(msg.content.toString()), messageOptions);
-                    logSubmissionAttempt(appId, retryAttempts, applicationJsonObject,'failed', responseStatusCode, responseBody);
                 }
             }
         } catch (e) {
             console.log('Error', e);
         }
-        })
+
     });
 }
 

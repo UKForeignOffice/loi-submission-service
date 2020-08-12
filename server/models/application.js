@@ -16,6 +16,9 @@ module.exports = function(sequelize, DataTypes) {
             },
             case_reference: {
                 type: DataTypes.STRING()
+            },
+            submissionAttempts: {
+                type: DataTypes.INTEGER()
             }
         },
         {tableName: 'Application'}
