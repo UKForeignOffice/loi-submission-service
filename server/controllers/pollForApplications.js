@@ -54,7 +54,8 @@ function processMsg(appId, retryAttempts) {
                         .then(function (results) {
                             Application.update(
                                 {
-                                    submitted: 'failed'
+                                    submitted: 'failed',
+                                    submissionAttempts: retryAttempts
                                 }, {
                                     where: {
                                         application_id: appId
