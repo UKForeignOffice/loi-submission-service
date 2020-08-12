@@ -9,34 +9,60 @@ var SubmissionAttempts = sequelize.import("../models/submissionAttempts");
 var pg = require('pg');
 delete pg.native;
 
+var maxRetryAttempts = config.maxRetryAttempts;
+
 function checkForApplications() {
     Application.findOne({
         where: {
             submitted: 'queued'
         }
     }).then(function (results) {
-        console.log("results", results)
+            if (!results) {
+                return
+            } else {
+                SubmissionAttempts.count({
+                        where: {
+                            application_id: results.dataValues.application_id
+                        }
+                    }
+                ).then(function (retryAttempts) {
+                        if (retryAttempts >= maxRetryAttempts) {
+                            console.log(`${results.dataValues.application_id} submission attempts reached, not trying again: ${retryAttempts}`)
+                            Application.update(
+                                {
+                                    submitted: 'failed'
+                                }, {
+                                    where: {
+                                        application_id: results.dataValues.application_id
+                                    }
+                                }
+                            ).then(function (failedAppUpdate) {
 
-        if (!results){
-            console.log("no results returned")
-            return 'no results returned'
-        } else {
-            processMsg(results.dataValues.application_id)
+                                console.log(`failedAppUpdate`, failedAppUpdate)
+                                console.log(`Updated ${results.dataValues.application_id} submission status to failed`)
+                            })
+                            return
+                        } else {
+                            processMsg(results.dataValues.application_id)
+                        }
+                    }
+                )
+            }
         }
-        // results.forEach(function(queuedApplication) {
-        //     console.log(queuedApplication.application_id);
-        // })
-            // console.log('queued applications', results)
-// if(re)
-//         processMsg(results.dataValues.application_id)
-        })
+    )
 }
 
-function processMsg(msg) {
-    processSubmissionQueue(msg, function (ok, applicationJsonObject, responseStatusCode, responseBody) {
-        // var headers = msg.properties.headers;
-        var headers = 1;
-        var appId = msg;
+function processMsg(appId) {
+    processSubmissionQueue(appId, function (ok, applicationJsonObject, responseStatusCode, responseBody) {
+
+        SubmissionAttempts.count({
+                where: {
+                    application_id: appId
+                }
+            }
+        ).then(function (retryAttempts) {
+            console.log(`${appId} submission attempts: ${retryAttempts}`)
+
         try {
             if (ok) {
                 // ch.ack(msg);
@@ -47,21 +73,29 @@ function processMsg(msg) {
                 //second argument is requeue - false will move the message to the submission queue
                 //where it will be dead-lettered back to the main queue
                 //after the retry interval set in the config
+                console.log('maxRetryAttempts', maxRetryAttempts)
+                console.log('retryAttempts', retryAttempts)
 
-                var retryAttempts = 1;
-                if (headers.retryAttempts) {
-                    retryAttempts = headers.retryAttempts + 1;
-                }
-                var maxRetryAttempts = config.rabbitMQ.maxRetryAttempts;
 
                 if (retryAttempts > maxRetryAttempts) {
+                    console.log('Retry Attempt limit reached')
                     //if we have reached maxRetryAttempts, update the database to indicate failure
                     logSubmissionAttempt(appId, retryAttempts, applicationJsonObject,'failed', responseStatusCode, responseBody)
                         .then(function (results) {
-                            //and acknowledge the message to remove it from the queue
-                            ch.ack(msg);
+                            Application.update(
+                                {
+                                    submitted: 'failed'
+                                }, {
+                                    where: {
+                                        application_id: appId
+                                    }
+                                }
+                            ).then(function (results) {
+                            console.log(`Updated ${appId} submission status to failed`)
+                            })
+
                         }).catch(function (error) {
-                        console.log(JSON.stringify(error));
+                        console.log('ERROR', JSON.stringify(error));
                     });
 
                 }
@@ -77,8 +111,9 @@ function processMsg(msg) {
                 }
             }
         } catch (e) {
-            console.log(e);
+            console.log('Error', e);
         }
+        })
     });
 }
 
@@ -127,8 +162,7 @@ function processSubmissionQueue(msg, callback) {
                 body: applicationJsonObject
             }, function (error, response, body) {
                 if (error) {
-                    // console.log(JSON.stringify(error));
-                    console.log(error);
+                    console.log('Error submitting to casebook', error);
                     callback(false, applicationJsonObject, (response ? response.statusCode : ''), (body || ''));
                 }
                 else if (response.statusCode === 200) { // Successful submit response code

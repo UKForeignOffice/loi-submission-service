@@ -19,6 +19,6 @@ app.use(bodyParser.urlencoded({
 //start listening on the rabbitMQ
 // submissionController.initQueue();
 
-setInterval(() => pollForApplicationsController.checkForApplications(), 3000);
+setInterval(() => pollForApplicationsController.checkForApplications(), config.pollInterval);
 
 module.exports = app;
