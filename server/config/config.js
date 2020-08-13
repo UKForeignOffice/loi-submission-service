@@ -10,7 +10,7 @@ var maxRetryAttempts = process.env.MAXRETRYATTEMPTS
 var pollInterval = process.env.POLLINTERVAL
 
 var Sequelize = require('sequelize');
-
+console.log("certificatePath", certificatePath)
 var config = {
     // "rabbitMQ": {url: rabbitMq.url, queueName: rabbitMq.queueName, exchangeName: rabbitMq.exchangeName, retryQueue: rabbitMq.retryQueue, retryExchange: rabbitMq.retryExchange, retryDelay: rabbitMq.retryDelay, maxRetryAttempts: rabbitMq.maxRetryAttempts },
     "maxRetryAttempts": maxRetryAttempts,
