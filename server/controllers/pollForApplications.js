@@ -9,6 +9,7 @@ var SubmissionAttempts = sequelize.import("../models/submissionAttempts");
 var pg = require('pg');
 delete pg.native;
 
+sequelize.options.logging = false
 var maxRetryAttempts = config.maxRetryAttempts;
 
 function checkForApplications() {
@@ -23,7 +24,7 @@ function checkForApplications() {
             if (!results) {
                 return
             } else {
-                console.log('applications to process', results)
+                console.log('applications to process', results.dataValues.application_id)
                 processMsg(results.dataValues.application_id, results.dataValues.submissionAttempts)
             }
         }
@@ -102,7 +103,7 @@ function processMsg(appId, retryAttempts) {
 
 function processSubmissionQueue(msg, callback) {
     var appId = msg;
-    console.log("Got msg ", appId);
+    console.log("Processing", appId);
     var submissionApiUrl = config.submissionApiUrl;
     var applicationJsonObject = {};
 
