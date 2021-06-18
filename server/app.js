@@ -2,7 +2,6 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var config = require('./config/config');
-var submissionController = require('./controllers/submission');
 var pollForApplicationsController = require('./controllers/pollForApplications');
 require('./config/logs');
 // Create our Express application
