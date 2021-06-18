@@ -1,7 +1,7 @@
-//Mocha root level hooks
+// //Mocha root level hooks
 // var cp = require('child_process');
 // const server = require('../server/bin/www');
-
+//
 // before("Run Server", function (done) {
 //     //restore database before each test
 //     //windows will not set this NODE_ENV variable
@@ -29,11 +29,11 @@
 //         done();
 //     }
 // });
-
+//
 // after("Close Server", function (done) {
 //     server.close(done);
 // });
-
+//
 // //drop the test database
 // after(function (done) {
 //     if (process.env.NODE_ENV === 'test') {

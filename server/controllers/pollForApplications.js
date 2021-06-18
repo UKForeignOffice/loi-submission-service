@@ -1,37 +1,35 @@
-var Sequelize = require('sequelize');
 var request = require('request');
 var crypto = require('crypto');
 var config = require('../config/config');
-var sequelize = new Sequelize(config.db);
-var ExportedApplicationData = sequelize.import("../models/exportedApplicationData");
-var Application = sequelize.import("../models/application");
-var SubmissionAttempts = sequelize.import("../models/submissionAttempts");
-var ExportedEAppData = sequelize.import('../models/exportedEAppData');
-var UploadedDocumentUrls = sequelize.import('../models/uploadedDocumentUrls');
-var pg = require('pg');
-delete pg.native;
-
-sequelize.options.logging = false
+var ExportedApplicationData = require('../models/index').ExportedApplicationData
+var Application = require('../models/index').Application
+var SubmissionAttempts = require('../models/index').SubmissionAttempts
+var ExportedEAppData = require('../models/index').ExportedEAppData
+var UploadedDocumentUrls = require('../models/index').UploadedDocumentUrls
 var maxRetryAttempts = config.maxRetryAttempts;
+const { Op } = require("sequelize");
 
 function checkForApplications() {
+
     Application.findOne({
         where: {
             submitted: 'queued',
             submissionAttempts: {
-                "$lte": maxRetryAttempts
+                [Op.lte]: maxRetryAttempts
             }
+        },
+        order: [[ 'createdAt', 'DESC' ]]
+    }).then(function(results){
+        if (!results) {
+            return
+        } else {
+            const { application_id, submissionAttempts, serviceType } = results.dataValues;
+            console.log('applications to process', results.dataValues.application_id)
+            processMsg(application_id, submissionAttempts, serviceType);
         }
-    }).then(function (results) {
-            if (!results) {
-                return
-            } else {
-                const { application_id, submissionAttempts, serviceType } = results.dataValues;
-                console.log('applications to process', results.dataValues.application_id)
-                processMsg(application_id, submissionAttempts, serviceType);
-            }
-        }
-    )
+    }).catch(function (err){
+        console.log(err)
+    });
 }
 
 function processMsg(appId, retryAttempts, serviceType) {
@@ -103,7 +101,6 @@ function processMsg(appId, retryAttempts, serviceType) {
 
     });
 }
-
 function processSubmissionQueue(appId, serviceType, callback) {
     const isEApplication = serviceType === 4;
     if (isEApplication) {
@@ -170,12 +167,12 @@ function createEAppDataObject(eAppData, documentData) {
                 portalCustomerId: eAppData.user_id,
                 additionalInformation: '',
             },
-            documents: generateDocmentArray(documentData),
+            documents: generateDocumentArray(documentData),
         },
     };
 }
 
-function generateDocmentArray(documentData) {
+function generateDocumentArray(documentData) {
     return documentData.map((document) => {
         return {
             name: document.dataValues.filename,
@@ -185,6 +182,7 @@ function generateDocmentArray(documentData) {
 }
 
 function processPaperApplication(appId, callback) {
+    var applicationJsonObject = {};
     console.log('Processing paper app', appId);
 
     ExportedApplicationData.findOne({
@@ -205,8 +203,9 @@ function processPaperApplication(appId, callback) {
 
         // calculate HMAC string and encode in base64
         var objectString = JSON.stringify(applicationJsonObject, null, 0);
+
         var submissionApiUrl = config.submissionApiUrl;
-        var hash = crypto.createHmac('sha512', config.hmacKey).update(new Buffer(objectString, 'utf-8')).digest('hex').toUpperCase();
+        var hash = crypto.createHmac('sha512', config.hmacKey).update(new Buffer.from(objectString, 'utf-8')).digest('hex').toUpperCase();
 
         request.post({
                 headers: {
@@ -216,7 +215,6 @@ function processPaperApplication(appId, callback) {
                     "api-version": "4"
                 },
                 url: submissionApiUrl,
-                //proxy: 'http://ldnisprx01:8080', //uncomment this line if running in your own debug environment
                 agentOptions: config.certificatePath ? {
                     cert: config.certificatePath,
                     key: config.keyPath
@@ -338,10 +336,11 @@ function getApplicationObject(results) {
         var apartments = house.indexOf('Apartments');
         var flats = house.indexOf('Flat');
 
-
-
-        if(house_name[0].toLowerCase()=="flat"  &&  isNumeric(house_name[1].replace(',','').substr(1,isNumeric(house_name[1].replace(',','').length)))){
+        if(house_name[0] && house_name[1] &&
+            house_name[0].toLowerCase()=="flat"  &&
+            isNumeric(house_name[1].replace(',','').substr(1,isNumeric(house_name[1].replace(',','').length)))){
             casebookJSON[type].flatNumber = house_name[1].replace(',','');
+
             if(isNumeric(house_name[house_name.length-1].replace("-","").replace(',',''))){
                 casebookJSON[type].houseNumber = house_name[house_name.length-1].replace(',','');
                 casebookJSON[type].premises  = house.substr(casebookJSON[type].flatNumber.length+7,house.toString().length-(casebookJSON[type].flatNumber.length+7)-(casebookJSON[type].houseNumber.length+1));
@@ -367,7 +366,8 @@ function getApplicationObject(results) {
 
             }
         }
-        else if(house_name[0].toLowerCase()=="flat"  && isNumeric(house_name[1].replace(',','') )){
+        else if(house_name[0] && house_name[1] &&
+            house_name[0].toLowerCase()=="flat"  && isNumeric(house_name[1].replace(',','') )){
             casebookJSON[type].flatNumber = house_name[1].replace(',','');
             casebookJSON[type].premises  =house.substr(house_name[0].length +house_name[1].length+1,house.length ).replace(',','');
         }
@@ -550,7 +550,6 @@ function postToCasebook(applicationJsonObject, appId, callback) {
                 'api-version': '4',
             },
             url: submissionApiUrl,
-            //proxy: 'http://ldnisprx01:8080', //uncomment this line if running in your own debug environment
             agentOptions: config.certificatePath
                 ? {
                       cert: config.certificatePath,
