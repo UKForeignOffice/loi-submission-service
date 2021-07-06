@@ -258,10 +258,11 @@ function getApplicationObject(results) {
         var apartments = house.indexOf('Apartments');
         var flats = house.indexOf('Flat');
 
-
-
-        if(house_name[0].toLowerCase()=="flat"  &&  isNumeric(house_name[1].replace(',','').substr(1,isNumeric(house_name[1].replace(',','').length)))){
+        if(house_name[0] && house_name[1] &&
+            house_name[0].toLowerCase()=="flat"  &&
+            isNumeric(house_name[1].replace(',','').substr(1,isNumeric(house_name[1].replace(',','').length)))){
             casebookJSON[type].flatNumber = house_name[1].replace(',','');
+
             if(isNumeric(house_name[house_name.length-1].replace("-","").replace(',',''))){
                 casebookJSON[type].houseNumber = house_name[house_name.length-1].replace(',','');
                 casebookJSON[type].premises  = house.substr(casebookJSON[type].flatNumber.length+7,house.toString().length-(casebookJSON[type].flatNumber.length+7)-(casebookJSON[type].houseNumber.length+1));
@@ -287,7 +288,8 @@ function getApplicationObject(results) {
 
             }
         }
-        else if(house_name[0].toLowerCase()=="flat"  && isNumeric(house_name[1].replace(',','') )){
+        else if(house_name[0] && house_name[1] &&
+            house_name[0].toLowerCase()=="flat"  && isNumeric(house_name[1].replace(',','') )){
             casebookJSON[type].flatNumber = house_name[1].replace(',','');
             casebookJSON[type].premises  =house.substr(house_name[0].length +house_name[1].length+1,house.length ).replace(',','');
         }
