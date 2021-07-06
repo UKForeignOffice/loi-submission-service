@@ -1,34 +1,33 @@
-var Sequelize = require('sequelize');
 var request = require('request');
 var crypto = require('crypto');
 var config = require('../config/config');
-var sequelize = new Sequelize(config.db);
-var ExportedApplicationData = sequelize.import("../models/exportedApplicationData");
-var Application = sequelize.import("../models/application");
-var SubmissionAttempts = sequelize.import("../models/submissionAttempts");
-var pg = require('pg');
-delete pg.native;
-
-sequelize.options.logging = false
+var ExportedApplicationData = require('../models/index').ExportedApplicationData
+var Application = require('../models/index').Application
+var SubmissionAttempts = require('../models/index').SubmissionAttempts
 var maxRetryAttempts = config.maxRetryAttempts;
+const { Op } = require("sequelize");
 
 function checkForApplications() {
+
     Application.findOne({
         where: {
             submitted: 'queued',
             submissionAttempts: {
-                "$lte": maxRetryAttempts
+                [Op.lte]: maxRetryAttempts
             }
+        },
+        order: [[ 'createdAt', 'DESC' ]]
+    }).then(function(results){
+        if (!results) {
+            return console.log('No applications to process')
+        } else {
+            console.log(JSON.stringify(results))
+            console.log('applications to process', results.dataValues.application_id)
+            processMsg(results.dataValues.application_id, results.dataValues.submissionAttempts)
         }
-    }).then(function (results) {
-            if (!results) {
-                return
-            } else {
-                console.log('applications to process', results.dataValues.application_id)
-                processMsg(results.dataValues.application_id, results.dataValues.submissionAttempts)
-            }
-        }
-    )
+    }).catch(function (err){
+        console.log(err)
+    });
 }
 
 function processMsg(appId, retryAttempts) {
@@ -103,7 +102,7 @@ function processMsg(appId, retryAttempts) {
 
 function processSubmissionQueue(msg, callback) {
     var appId = msg;
-    console.log("Processing", appId);
+    console.log("Processing application", appId);
     var submissionApiUrl = config.submissionApiUrl;
     var applicationJsonObject = {};
 
@@ -127,7 +126,7 @@ function processSubmissionQueue(msg, callback) {
         // calculate HMAC string and encode in base64
         var objectString = JSON.stringify(applicationJsonObject, null, 0);
 
-        var hash = crypto.createHmac('sha512', config.hmacKey).update(new Buffer(objectString, 'utf-8')).digest('hex').toUpperCase();
+        var hash = crypto.createHmac('sha512', config.hmacKey).update(new Buffer.from(objectString, 'utf-8')).digest('hex').toUpperCase();
 
         request.post({
                 headers: {
@@ -259,10 +258,11 @@ function getApplicationObject(results) {
         var apartments = house.indexOf('Apartments');
         var flats = house.indexOf('Flat');
 
-
-
-        if(house_name[0].toLowerCase()=="flat"  &&  isNumeric(house_name[1].replace(',','').substr(1,isNumeric(house_name[1].replace(',','').length)))){
+        if(house_name[0] && house_name[1] &&
+            house_name[0].toLowerCase()=="flat"  &&
+            isNumeric(house_name[1].replace(',','').substr(1,isNumeric(house_name[1].replace(',','').length)))){
             casebookJSON[type].flatNumber = house_name[1].replace(',','');
+
             if(isNumeric(house_name[house_name.length-1].replace("-","").replace(',',''))){
                 casebookJSON[type].houseNumber = house_name[house_name.length-1].replace(',','');
                 casebookJSON[type].premises  = house.substr(casebookJSON[type].flatNumber.length+7,house.toString().length-(casebookJSON[type].flatNumber.length+7)-(casebookJSON[type].houseNumber.length+1));
@@ -288,7 +288,8 @@ function getApplicationObject(results) {
 
             }
         }
-        else if(house_name[0].toLowerCase()=="flat"  && isNumeric(house_name[1].replace(',','') )){
+        else if(house_name[0] && house_name[1] &&
+            house_name[0].toLowerCase()=="flat"  && isNumeric(house_name[1].replace(',','') )){
             casebookJSON[type].flatNumber = house_name[1].replace(',','');
             casebookJSON[type].premises  =house.substr(house_name[0].length +house_name[1].length+1,house.length ).replace(',','');
         }
