@@ -23,9 +23,13 @@
   },
   "scripts": {
     "start": "node ./server/bin/www",
+    "dev-start": "NODE_ENV=development npx nodemon --inspect ./server/bin/www",
     "test": "NODE_ENV=test PORT=6000 node node_modules/mocha/bin/mocha --recursive test/ > test-reports.xml",
     "test-win": "node node_modules/mocha/bin/mocha --recursive -R spec test/",
     "coverage": "NODE_ENV=test PORT=6000 node ./node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha -- --recursive -R tap \"test/\" > test.tap && istanbul report clover",
     "lint": "jshint --reporter checkstyle . > linting.xml"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.12"
   }
 }
