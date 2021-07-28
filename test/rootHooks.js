@@ -1,6 +1,6 @@
 //Mocha root level hooks
 var cp = require('child_process');
-
+const server = require('../server/bin/www');
 
 before("Run Server", function (done) {
     //restore database before each test
@@ -21,13 +21,11 @@ before("Run Server", function (done) {
             //}
             //delete server from require cache so that it really restarts beforeEach
             delete require.cache[require.resolve('../server/bin/www')];
-            server = require('../server/bin/www');
             done();
         });
     }
     else{
         delete require.cache[require.resolve('../server/bin/www')];
-        server = require('../server/bin/www');
         done();
     }
 });
