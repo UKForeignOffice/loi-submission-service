@@ -153,7 +153,7 @@ function createEAppDataObject(eAppData, documentData) {
                 forenames: eAppData.first_name.trim(),
                 surname: eAppData.last_name.trim(),
                 primaryTelephone: eAppData.telephone.trim(),
-                mobileTelephone: eAppData.mobile_number || '',
+                mobileTelephone: eAppData.mobileNo || '',
                 eveningTelephone: '',
                 email: eAppData.email,
             },
