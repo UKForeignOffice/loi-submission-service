@@ -159,7 +159,7 @@ function createEAppDataObject(eAppData, documentData) {
             },
             fields: {
                 applicationReference: eAppData.unique_app_id,
-                numberOfDocuments: eAppData.doc_count,
+                documentCount: eAppData.doc_count,
                 paymentReference: eAppData.payment_reference,
                 paymentAmount: eAppData.payment_amount,
                 customerInternalReference: eAppData.user_ref.trim(),
