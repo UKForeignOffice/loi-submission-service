@@ -573,5 +573,7 @@ function postToCasebook(applicationJsonObject, callback) {
 
 module.exports = {
     checkForApplications,
-    dbModels: { Application, ExportedEAppData, UploadedDocumentUrls }, // exported for testing
+    // exported for testing
+    createEAppDataObject,
+    dbModels: { Application, ExportedEAppData, UploadedDocumentUrls },
 };
