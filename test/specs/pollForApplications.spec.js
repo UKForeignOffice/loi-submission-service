@@ -1,37 +1,66 @@
-var Sequelize = require('sequelize');
-var sequelize = new Sequelize(config.db);
-const Application = sequelize.import('../../server/models/application');
-
-const pollForApplicationsController = require('../../server/controllers/pollForApplications');
+const pollForApplications = require('../../server/controllers/pollForApplications');
+const { checkForApplications, dbModels } = pollForApplications;
 
 function assertWhenPromisesResolved(assertion) {
-    setTimeout(assertion, 100);
+    setTimeout(assertion);
 }
 
 describe('pollForApplications eApp specific', () => {
-    const sandbox = sinon.sandbox.create();
-
     beforeEach(() => {
-        sandbox.spy(console, 'log');
+        sinon.spy(console, 'log');
     });
 
     afterEach(() => {
-        sandbox.restore();
+        sinon.restore();
     });
 
     it.only('should run electronic applicaiton process if serviceType is 4', () => {
         // when
-        sandbox.stub(Application, 'findOne').returns(
-            Promise.resolve({
+        sinon.stub(dbModels.Application, 'findOne').resolves({
+            dataValues: {
+                application_id: 12345,
+                submissionAttempts: 0,
+                submitted: 'queued',
+                serviceType: 4,
+            },
+        });
+
+        sinon.stub(dbModels.ExportedEAppData, 'findOne').resolves({
+            dataValues: {
+                id: 1,
+                application_id: 12345,
+                applicationType: 'eApostille Service',
+                first_name: 'John',
+                last_name: 'Doe',
+                telephone: '+1-202-555-0123',
+                mobileNo: null,
+                email: 'joe@example.com',
+                doc_count: 1,
+                user_ref: '',
+                payment_reference: '8516279850170300',
+                payment_amount: '30.00',
+                feedback_consent: false,
+                unique_app_id: 'A-D-21-0803-2027-A763',
+                user_id: 123,
+                company_name: 'N/A',
+                createdAt: '2021-08-03',
+            },
+        });
+
+        sinon.stub(dbModels.UploadedDocumentUrls, 'findAll').resolves([
+            {
                 dataValues: {
+                    id: 1,
                     application_id: 12345,
-                    submissionAttempts: 0,
-                    submitted: 'queued',
-                    serviceType: 4,
+                    filename: 'test.pdf',
+                    uploaded_url: 'https://test.com/test.pdf',
                 },
-            })
-        );
-        pollForApplicationsController.checkForApplications();
+            },
+        ]);
+
+        sinon.stub(request, 'post').callsFake(() => null);
+
+        checkForApplications();
 
         // then
         assertWhenPromisesResolved(

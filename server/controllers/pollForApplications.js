@@ -471,7 +471,7 @@ function postToCasebook(applicationJsonObject, callback) {
 
     var hash = crypto
         .createHmac('sha512', config.hmacKey)
-        .update(new Buffer(objectString, 'utf-8'))
+        .update(Buffer.from(objectString, 'utf-8'))
         .digest('hex')
         .toUpperCase();
 
@@ -571,7 +571,7 @@ function postToCasebook(applicationJsonObject, callback) {
     );
 }
 
-//exposed methods
-exports.checkForApplications = function () {
-    checkForApplications();
+module.exports = {
+    checkForApplications,
+    dbModels: { Application, ExportedEAppData, UploadedDocumentUrls }, // exported for testing
 };
