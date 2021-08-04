@@ -5,10 +5,12 @@ var Sequelize = require('sequelize');
 var sequelize = new Sequelize(config.db);
 var Application = sequelize.import("../../server/models/application");
 var SubmissionAttempts = sequelize.import("../../server/models/submissionAttempts");
-var queueLocation = config.rabbitMQ.queueLocation;
+var queueLocation = ""; // config.rabbitMQ.queueLocation;
 var cp = require('child_process');
 var appId = '2482';
-describe('Work with Successful Submissions', function () {
+
+// Integration tests that rely on rabbitMQ which is no longer used
+describe.skip('Work with Successful Submissions', function () {
     before(function (done) {
         var responseBody = {
             "applicationReference": 509196451,
@@ -66,7 +68,7 @@ describe('Work with Successful Submissions', function () {
 
 
 });
-describe('Work with Failed Submissions', function () {
+describe.skip('Work with Failed Submissions', function () {
     before(function (done) {
         var psqlRestore = "PGPASSWORD=" + config.pgpassword + " psql -U postgres -f test/files/FCO_LOI_Service_Test.sql";
         cp.exec(psqlRestore, function (err, stdout, stderr) {
@@ -138,7 +140,7 @@ describe('Work with Failed Submissions', function () {
     });
 });
 
-describe('Behaves correctly after recovering from Failed Submissions', function () {
+describe.skip('Behaves correctly after recovering from Failed Submissions', function () {
     before(function (done) {
         var responseBody = {
             "applicationReference": 509196451,
@@ -206,4 +208,3 @@ describe('Behaves correctly after recovering from Failed Submissions', function 
         });
     });
 });
-
