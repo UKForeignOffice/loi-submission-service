@@ -113,6 +113,7 @@ describe('pollForApplications eApp specific', () => {
     describe('createEAppDataObject', () => {
         it('should fetch all the uploaded doc urls related to an application', () => {
             // when
+            sinon.useFakeTimers(1628606911103);
             const dataObject = createEAppDataObject(
                 eAppData.dataValues,
                 documentData
@@ -123,7 +124,7 @@ describe('pollForApplications eApp specific', () => {
                 legalisationApplication: {
                     userId: 'legalisation',
                     caseType: 'eApostille Service',
-                    timestamp: new Date().getTime().toString(),
+                    timestamp: '1628606911103',
                     applicant: {
                         forenames: 'John',
                         surname: 'Doe',

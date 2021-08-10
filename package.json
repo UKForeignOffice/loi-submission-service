@@ -1,35 +1,36 @@
 {
-  "name": "submissionAPI",
-  "version": "0.1.0",
-  "dependencies": {
-    "amqplib": "^0.4.0",
-    "body-parser": "^1.14.2",
-    "chai": "^4.3.4",
-    "dotenv": "^8.6.0",
-    "expect": "^1.13.4",
-    "express": "^4.13.3",
-    "isnumeric": "^0.3.1",
-    "istanbul": "^0.4.2",
-    "jshint": "^2.13.0",
-    "mocha": "^9.0.3",
-    "pg": "^4.4.3",
-    "pg-hstore": "^2.3.4",
-    "request": "^2.88.2",
-    "sequelize": "^3.35.1",
-    "should": "^8.1.1",
-    "sinon": "^11.1.2",
-    "supertest": "3.0.0",
-    "winston": "^2.1.1"
-  },
-  "scripts": {
-    "start": "node ./server/bin/www",
-    "dev-start": "NODE_ENV=development npx nodemon --inspect ./server/bin/www",
-    "test": "npx mocha --recursive test/",
-    "test-win": "node node_modules/mocha/bin/mocha --recursive -R spec test/",
-    "coverage": "NODE_ENV=test PORT=6000 node ./node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha -- --recursive -R tap \"test/\" > test.tap && istanbul report clover",
-    "lint": "jshint --reporter checkstyle . > linting.xml"
-  },
-  "devDependencies": {
-    "nodemon": "^2.0.12"
-  }
+    "name": "submissionAPI",
+    "version": "0.1.0",
+    "dependencies": {
+        "amqplib": "^0.4.0",
+        "body-parser": "^1.14.2",
+        "chai": "^4.3.4",
+        "dotenv": "^8.6.0",
+        "expect": "^1.13.4",
+        "express": "^4.13.3",
+        "isnumeric": "^0.3.1",
+        "istanbul": "^0.4.2",
+        "jshint": "^2.13.0",
+        "mocha": "^9.0.3",
+        "pg": "^4.4.3",
+        "pg-hstore": "^2.3.4",
+        "request": "^2.88.2",
+        "sequelize": "^3.35.1",
+        "should": "^8.1.1",
+        "sinon": "^11.1.2",
+        "supertest": "3.0.0",
+        "winston": "^2.1.1"
+    },
+    "scripts": {
+        "start": "node ./server/bin/www",
+        "dev-start": "NODE_ENV=development npx nodemon --inspect ./server/bin/www",
+        "test": "npx mocha --recursive test/ --reporter mochawesome --reporter-options quiet=true",
+        "test-win": "node node_modules/mocha/bin/mocha --recursive -R spec test/",
+        "coverage": "NODE_ENV=test PORT=6000 node ./node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha -- --recursive -R tap \"test/\" > test.tap && istanbul report clover",
+        "lint": "jshint --reporter checkstyle . > linting.xml"
+    },
+    "devDependencies": {
+        "mochawesome": "^6.2.2",
+        "nodemon": "^2.0.12"
+    }
 }

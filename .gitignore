@@ -36,3 +36,5 @@ npm-debug.log
 logs/*
 server/apidoc
 linting.xml
+mochawesome-report/
+.DS_Store
