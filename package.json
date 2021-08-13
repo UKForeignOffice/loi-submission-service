@@ -24,7 +24,8 @@
     "scripts": {
         "start": "node ./server/bin/www",
         "dev-start": "NODE_ENV=development npx nodemon --inspect ./server/bin/www",
-        "test": "npx mocha --recursive test/ --reporter mochawesome --reporter mocha-junit-reporter",
+        "test": "npx mocha --recursive test/",
+        "test-report": "npx mocha --recursive test/ --reporter mocha-junit-reporter",
         "test-win": "node node_modules/mocha/bin/mocha --recursive -R spec test/",
         "coverage": "NODE_ENV=test PORT=6000 node ./node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha -- --recursive -R tap \"test/\" > test.tap && istanbul report clover",
         "lint": "jshint --reporter checkstyle . > linting.xml"
