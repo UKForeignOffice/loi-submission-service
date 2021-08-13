@@ -1,0 +1,334 @@
+{
+  "stats": {
+    "suites": 6,
+    "tests": 6,
+    "passes": 3,
+    "pending": 3,
+    "failures": 0,
+    "start": "2021-08-10T15:04:23.754Z",
+    "end": "2021-08-10T15:04:24.004Z",
+    "duration": 250,
+    "testsRegistered": 6,
+    "passPercent": 100,
+    "pendingPercent": 50,
+    "other": 0,
+    "hasOther": false,
+    "skipped": 0,
+    "hasSkipped": false
+  },
+  "results": [
+    {
+      "uuid": "cc4cdc5d-26c9-4970-a32a-e2ba7405548a",
+      "title": "",
+      "fullFile": "",
+      "file": "",
+      "beforeHooks": [],
+      "afterHooks": [],
+      "tests": [],
+      "suites": [
+        {
+          "uuid": "61a58ef9-4cb3-44b5-845c-3cb032d6b47c",
+          "title": "pollForApplications eApp specific",
+          "fullFile": "/Users/richardoliverbray/loi-submission-service/test/specs/pollForApplications.spec.js",
+          "file": "/test/specs/pollForApplications.spec.js",
+          "beforeHooks": [],
+          "afterHooks": [],
+          "tests": [],
+          "suites": [
+            {
+              "uuid": "33b2ce46-f008-41e9-bcad-f2974f1dc8e5",
+              "title": "processElectronicApplication",
+              "fullFile": "/Users/richardoliverbray/loi-submission-service/test/specs/pollForApplications.spec.js",
+              "file": "/test/specs/pollForApplications.spec.js",
+              "beforeHooks": [
+                {
+                  "title": "\"before each\" hook in \"processElectronicApplication\"",
+                  "fullTitle": "pollForApplications eApp specific processElectronicApplication \"before each\" hook in \"processElectronicApplication\"",
+                  "timedOut": false,
+                  "duration": 44,
+                  "state": null,
+                  "speed": null,
+                  "pass": false,
+                  "fail": false,
+                  "pending": false,
+                  "context": null,
+                  "code": "sinon.stub(dbModels.Application, 'findOne').resolves({\n    dataValues: {\n        application_id: 12345,\n        submissionAttempts: 0,\n        submitted: 'queued',\n        serviceType: 4,\n    },\n});\nfindOneExportedData = sinon\n    .stub(dbModels.ExportedEAppData, 'findOne')\n    .resolves(eAppData);\nfindAllUploadedDocuments = sinon\n    .stub(dbModels.UploadedDocumentUrls, 'findAll')\n    .resolves(documentData);\nsinon.stub(request, 'post').callsFake(() => null);\nsinon.spy(console, 'log');",
+                  "err": {},
+                  "uuid": "0e303892-d988-4998-9139-6fc2e45b5a93",
+                  "parentUUID": "33b2ce46-f008-41e9-bcad-f2974f1dc8e5",
+                  "isHook": true,
+                  "skipped": false
+                }
+              ],
+              "afterHooks": [
+                {
+                  "title": "\"after each\" hook in \"processElectronicApplication\"",
+                  "fullTitle": "pollForApplications eApp specific processElectronicApplication \"after each\" hook in \"processElectronicApplication\"",
+                  "timedOut": false,
+                  "duration": 1,
+                  "state": null,
+                  "speed": null,
+                  "pass": false,
+                  "fail": false,
+                  "pending": false,
+                  "context": null,
+                  "code": "sinon.restore();",
+                  "err": {},
+                  "uuid": "1168b021-5f99-4541-8a98-6ba08f80ecbc",
+                  "parentUUID": "33b2ce46-f008-41e9-bcad-f2974f1dc8e5",
+                  "isHook": true,
+                  "skipped": false
+                }
+              ],
+              "tests": [
+                {
+                  "title": "should run electronic applicaiton process if serviceType is 4",
+                  "fullTitle": "pollForApplications eApp specific processElectronicApplication should run electronic applicaiton process if serviceType is 4",
+                  "timedOut": false,
+                  "duration": 3,
+                  "state": "passed",
+                  "speed": "fast",
+                  "pass": true,
+                  "fail": false,
+                  "pending": false,
+                  "context": null,
+                  "code": "// when\ncheckForApplications();\n// then\nassertWhenPromisesResolved(\n    () =>\n        expect(console.log.calledWith('Processing electronic app'))\n            .to.be.true\n);",
+                  "err": {},
+                  "uuid": "1c049d9a-de0c-4512-b530-036cfb36f106",
+                  "parentUUID": "33b2ce46-f008-41e9-bcad-f2974f1dc8e5",
+                  "isHook": false,
+                  "skipped": false
+                },
+                {
+                  "title": "should fetch all the uploaded doc urls related to an application",
+                  "fullTitle": "pollForApplications eApp specific processElectronicApplication should fetch all the uploaded doc urls related to an application",
+                  "timedOut": false,
+                  "duration": 2,
+                  "state": "passed",
+                  "speed": "fast",
+                  "pass": true,
+                  "fail": false,
+                  "pending": false,
+                  "context": null,
+                  "code": "// when\ncheckForApplications();\n// then\nassertWhenPromisesResolved(\n    () =>\n        expect(\n            findOneExportedData.calledWith({\n                where: {\n                    application_id: 12345,\n                },\n            })\n        ).to.be.true\n);\nassertWhenPromisesResolved(\n    () =>\n        expect(\n            findAllUploadedDocuments.calledWith({\n                where: {\n                    application_id: 12345,\n                },\n            })\n        ).to.be.true\n);",
+                  "err": {},
+                  "uuid": "5022122d-ed0e-4e31-b0d6-359c85726e3a",
+                  "parentUUID": "33b2ce46-f008-41e9-bcad-f2974f1dc8e5",
+                  "isHook": false,
+                  "skipped": false
+                }
+              ],
+              "suites": [],
+              "passes": [
+                "1c049d9a-de0c-4512-b530-036cfb36f106",
+                "5022122d-ed0e-4e31-b0d6-359c85726e3a"
+              ],
+              "failures": [],
+              "pending": [],
+              "skipped": [],
+              "duration": 5,
+              "root": false,
+              "rootEmpty": false,
+              "_timeout": 2000
+            },
+            {
+              "uuid": "f9fbd24d-fcf1-466b-a1fd-0f7227eb3e84",
+              "title": "createEAppDataObject",
+              "fullFile": "/Users/richardoliverbray/loi-submission-service/test/specs/pollForApplications.spec.js",
+              "file": "/test/specs/pollForApplications.spec.js",
+              "beforeHooks": [],
+              "afterHooks": [],
+              "tests": [
+                {
+                  "title": "should fetch all the uploaded doc urls related to an application",
+                  "fullTitle": "pollForApplications eApp specific createEAppDataObject should fetch all the uploaded doc urls related to an application",
+                  "timedOut": false,
+                  "duration": 17,
+                  "state": "passed",
+                  "speed": "fast",
+                  "pass": true,
+                  "fail": false,
+                  "pending": false,
+                  "context": null,
+                  "code": "// when\nsinon.useFakeTimers(1628606911103);\nconst dataObject = createEAppDataObject(\n    eAppData.dataValues,\n    documentData\n);\n// then\nconst expectedResult = {\n    legalisationApplication: {\n        userId: 'legalisation',\n        caseType: 'eApostille Service',\n        timestamp: '1628606911103',\n        applicant: {\n            forenames: 'John',\n            surname: 'Doe',\n            primaryTelephone: '+1-202-555-0123',\n            mobileTelephone: '',\n            eveningTelephone: '',\n            email: 'joe@example.com',\n        },\n        fields: {\n            applicationReference: 'A-D-21-0803-2027-A763',\n            documentCount: 1,\n            paymentReference: '8516279850170300',\n            paymentAmount: '30.00',\n            customerInternalReference: '',\n            feedbackConsent: false,\n            companyName: 'N/A',\n            companyRegistrationNumber: '',\n            portalCustomerId: 123,\n            additionalInformation: '',\n        },\n        documents: [\n            {\n                name: 'test.pdf',\n                downloadUrl: 'https://test.com/test.pdf',\n            },\n        ],\n    },\n};\nexpect(dataObject).to.deep.equal(expectedResult);",
+                  "err": {},
+                  "uuid": "2ad1a909-2680-4598-bb75-de8307d5bc2c",
+                  "parentUUID": "f9fbd24d-fcf1-466b-a1fd-0f7227eb3e84",
+                  "isHook": false,
+                  "skipped": false
+                }
+              ],
+              "suites": [],
+              "passes": [
+                "2ad1a909-2680-4598-bb75-de8307d5bc2c"
+              ],
+              "failures": [],
+              "pending": [],
+              "skipped": [],
+              "duration": 17,
+              "root": false,
+              "rootEmpty": false,
+              "_timeout": 2000
+            }
+          ],
+          "passes": [],
+          "failures": [],
+          "pending": [],
+          "skipped": [],
+          "duration": 0,
+          "root": false,
+          "rootEmpty": false,
+          "_timeout": 2000
+        },
+        {
+          "uuid": "95050397-cf98-49e3-a983-d28174ebe3e9",
+          "title": "Work with Successful Submissions",
+          "fullFile": "/Users/richardoliverbray/loi-submission-service/test/specs/submission.spec.js",
+          "file": "/test/specs/submission.spec.js",
+          "beforeHooks": [],
+          "afterHooks": [],
+          "tests": [
+            {
+              "title": "processes an application when correct key put on rabbitMQ",
+              "fullTitle": "Work with Successful Submissions processes an application when correct key put on rabbitMQ",
+              "timedOut": false,
+              "duration": 0,
+              "state": "pending",
+              "speed": null,
+              "pass": false,
+              "fail": false,
+              "pending": true,
+              "context": null,
+              "code": "",
+              "err": {},
+              "uuid": "296b28bb-15cd-4dbf-922f-58a593055246",
+              "parentUUID": "95050397-cf98-49e3-a983-d28174ebe3e9",
+              "isHook": false,
+              "skipped": false
+            }
+          ],
+          "suites": [],
+          "passes": [],
+          "failures": [],
+          "pending": [
+            "296b28bb-15cd-4dbf-922f-58a593055246"
+          ],
+          "skipped": [],
+          "duration": 0,
+          "root": false,
+          "rootEmpty": false,
+          "_timeout": 2000
+        },
+        {
+          "uuid": "e6053463-e466-4b3f-af83-fca8611b03f5",
+          "title": "Work with Failed Submissions",
+          "fullFile": "/Users/richardoliverbray/loi-submission-service/test/specs/submission.spec.js",
+          "file": "/test/specs/submission.spec.js",
+          "beforeHooks": [],
+          "afterHooks": [],
+          "tests": [
+            {
+              "title": "records failure and drops from the queue after max retry attempts",
+              "fullTitle": "Work with Failed Submissions records failure and drops from the queue after max retry attempts",
+              "timedOut": false,
+              "duration": 0,
+              "state": "pending",
+              "speed": null,
+              "pass": false,
+              "fail": false,
+              "pending": true,
+              "context": null,
+              "code": "",
+              "err": {},
+              "uuid": "9057949f-9c1f-4ef1-a660-abdaca39e975",
+              "parentUUID": "e6053463-e466-4b3f-af83-fca8611b03f5",
+              "isHook": false,
+              "skipped": false
+            }
+          ],
+          "suites": [],
+          "passes": [],
+          "failures": [],
+          "pending": [
+            "9057949f-9c1f-4ef1-a660-abdaca39e975"
+          ],
+          "skipped": [],
+          "duration": 0,
+          "root": false,
+          "rootEmpty": false,
+          "_timeout": 2000
+        },
+        {
+          "uuid": "275fd730-e496-4cb0-80de-d06cd3b94704",
+          "title": "Behaves correctly after recovering from Failed Submissions",
+          "fullFile": "/Users/richardoliverbray/loi-submission-service/test/specs/submission.spec.js",
+          "file": "/test/specs/submission.spec.js",
+          "beforeHooks": [],
+          "afterHooks": [],
+          "tests": [
+            {
+              "title": "sends to service and stops processing",
+              "fullTitle": "Behaves correctly after recovering from Failed Submissions sends to service and stops processing",
+              "timedOut": false,
+              "duration": 0,
+              "state": "pending",
+              "speed": null,
+              "pass": false,
+              "fail": false,
+              "pending": true,
+              "context": null,
+              "code": "",
+              "err": {},
+              "uuid": "10394176-f662-47e3-9afa-5c44c793f775",
+              "parentUUID": "275fd730-e496-4cb0-80de-d06cd3b94704",
+              "isHook": false,
+              "skipped": false
+            }
+          ],
+          "suites": [],
+          "passes": [],
+          "failures": [],
+          "pending": [
+            "10394176-f662-47e3-9afa-5c44c793f775"
+          ],
+          "skipped": [],
+          "duration": 0,
+          "root": false,
+          "rootEmpty": false,
+          "_timeout": 2000
+        }
+      ],
+      "passes": [],
+      "failures": [],
+      "pending": [],
+      "skipped": [],
+      "duration": 0,
+      "root": true,
+      "rootEmpty": true,
+      "_timeout": 2000
+    }
+  ],
+  "meta": {
+    "mocha": {
+      "version": "9.0.3"
+    },
+    "mochawesome": {
+      "options": {
+        "quiet": true,
+        "reportFilename": "mochawesome",
+        "saveHtml": true,
+        "saveJson": true,
+        "consoleReporter": "spec",
+        "useInlineDiffs": false,
+        "code": true
+      },
+      "version": "6.2.2"
+    },
+    "marge": {
+      "options": {
+        "quiet": "true"
+      },
+      "version": "5.2.0"
+    }
+  }
+}
