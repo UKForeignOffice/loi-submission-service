@@ -133,7 +133,7 @@ function processElectronicApplication(appId, callback) {
                     eAppData,
                     documentUrls
                 );
-                return postToCasebook(applicationJsonObject, callback);
+                return postToCasebook(applicationJsonObject, appId, callback);
             })
             .catch((err) => {
                 console.error(err);
@@ -200,7 +200,7 @@ function processPaperApplication(appId, callback) {
         }
 
         const applicationJsonObject = getApplicationObject(results.dataValues);
-        postToCasebook(applicationJsonObject, callback);
+        postToCasebook(applicationJsonObject, appId, callback);
     });
 }
 
@@ -464,7 +464,7 @@ function logSubmissionAttempt(application_id, retry_number, submitted_json, stat
     });
 }
 
-function postToCasebook(applicationJsonObject, callback) {
+function postToCasebook(applicationJsonObject, appId, callback) {
     var submissionApiUrl = config.submissionApiUrl;
     // calculate HMAC string and encode in base64
     var objectString = JSON.stringify(applicationJsonObject, null, 0);
@@ -479,9 +479,9 @@ function postToCasebook(applicationJsonObject, callback) {
         {
             headers: {
                 accept: 'application/json',
-                hash: hash,
+                hash,
                 'content-type': 'application/json; charset=utf-8',
-                'api-version': '3',
+                'api-version': '4',
             },
             url: submissionApiUrl,
             //proxy: 'http://ldnisprx01:8080', //uncomment this line if running in your own debug environment
