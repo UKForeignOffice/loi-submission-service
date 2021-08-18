@@ -147,7 +147,7 @@ function createEAppDataObject(eAppData, documentData) {
     return {
         legalisationApplication: {
             userId: 'legalisation',
-            caseType: eAppData.applicationType,
+            caseType: 'eApostille Service',
             timestamp: new Date().getTime().toString(),
             applicant: {
                 forenames: eAppData.first_name.trim(),
