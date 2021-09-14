@@ -5,6 +5,7 @@ var dbConn = process.env.DBCONN;
 var submissionApiUrl = process.env.SUBMISSIONAPIURL;
 var certificatePath = process.env.CASEBOOKCERTIFICATE;
 var keyPath = process.env.CASEBOOKKEY;
+var additionalPaymentApiUrl = process.env.ADDITIONALPAYMENTAPIURL;
 var hmacKey = process.env.HMACKEY;
 var maxRetryAttempts = process.env.MAXRETRYATTEMPTS
 var pollInterval = process.env.POLLINTERVAL
@@ -17,6 +18,7 @@ var config = {
     "pollInterval": pollInterval,
     'db': dbConn,
     'submissionApiUrl': submissionApiUrl,
+    'additionalPaymentApiUrl': additionalPaymentApiUrl,
     'certificatePath': certificatePath,
     'keyPath': keyPath,
     'hmacKey': hmacKey
