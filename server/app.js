@@ -2,8 +2,8 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var config = require('./config/config');
-var submissionController = require('./controllers/submission');
 var pollForApplicationsController = require('./controllers/pollForApplications');
+var pollForAdditionalPaymentsController = require('./controllers/pollForAdditionalPayments');
 require('./config/logs');
 // Create our Express application
 var app = express();
@@ -16,9 +16,7 @@ app.use(bodyParser.urlencoded({
 }));
 
 
-//start listening on the rabbitMQ
-// submissionController.initQueue();
-
 setInterval(() => pollForApplicationsController.checkForApplications(), config.pollInterval);
+setInterval(() => pollForAdditionalPaymentsController.checkForAdditionalPayments(), config.pollInterval);
 
 module.exports = app;

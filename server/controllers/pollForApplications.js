@@ -134,7 +134,7 @@ function processSubmissionQueue(msg, callback) {
                     "accept": "application/json",
                     "hash": hash,
                     "content-type": "application/json; charset=utf-8",
-                    "api-version": "3"
+                    "api-version": "4"
                 },
                 url: submissionApiUrl,
                 //proxy: 'http://ldnisprx01:8080', //uncomment this line if running in your own debug environment
@@ -343,6 +343,7 @@ function getApplicationObject(results) {
                     "documentCount": results.doc_count,
                     "paymentReference": results.payment_reference,
                     "paymentAmount": results.payment_amount,
+                    "paymentGateway": 'GOV_PAY',
                     "customerInternalReference": trimWhitespace(results.user_ref),
                     "feedbackConsent": trimWhitespace(results.feedback_consent),
                     "companyName": results.company_name != 'N/A' ? results.company_name : "",
@@ -410,6 +411,7 @@ function getApplicationObject(results) {
                     "documentCount": results.doc_count,
                     "paymentReference": results.payment_reference,
                     "paymentAmount": results.payment_amount,
+                    "paymentGateway": 'GOV_PAY',
                     "customerInternalReference": trimWhitespace(results.user_ref),
                     "feedbackConsent": trimWhitespace(results.feedback_consent),
                     "companyName":  results.company_name != 'N/A' ? results.company_name : "",
