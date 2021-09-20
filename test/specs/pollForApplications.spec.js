@@ -137,6 +137,7 @@ describe('pollForApplications eApp specific', () => {
                         applicationReference: 'A-D-21-0803-2027-A763',
                         documentCount: 1,
                         paymentReference: '8516279850170300',
+                        paymentGateway: 'GOV_PAY',
                         paymentAmount: '30.00',
                         customerInternalReference: '',
                         feedbackConsent: false,
