@@ -199,8 +199,71 @@ function processPaperApplication(appId, callback) {
             return null;
         }
 
-        const applicationJsonObject = getApplicationObject(results.dataValues);
-        postToCasebook(applicationJsonObject, appId, callback);
+        applicationJsonObject = getApplicationObject(results.dataValues);
+
+
+        // calculate HMAC string and encode in base64
+        var objectString = JSON.stringify(applicationJsonObject, null, 0);
+
+        var hash = crypto.createHmac('sha512', config.hmacKey).update(new Buffer(objectString, 'utf-8')).digest('hex').toUpperCase();
+
+        request.post({
+                headers: {
+                    "accept": "application/json",
+                    "hash": hash,
+                    "content-type": "application/json; charset=utf-8",
+                    "api-version": "4"
+                },
+                url: submissionApiUrl,
+                //proxy: 'http://ldnisprx01:8080', //uncomment this line if running in your own debug environment
+                agentOptions: config.certificatePath ? {
+                    cert: config.certificatePath,
+                    key: config.keyPath
+                } : null,
+                json: true,
+                body: applicationJsonObject
+            }, function (error, response, body) {
+                if (error) {
+                    console.log('Error submitting to casebook', error);
+                    callback(false, applicationJsonObject, (response ? response.statusCode : ''), (body || ''));
+                }
+                else if (response.statusCode === 200) { // Successful submit response code
+                    console.log('Application '+appId+' has been submitted successfully');
+
+                    /*
+                     * Update the application table for submit status, case reference and app reference
+                     * (both received as a response from submission api)
+                     */
+                    Application.update(
+                        {
+                            submitted: 'submitted',
+                            application_reference: body.applicationReference,
+                            case_reference: body.caseReference
+                        }, {
+                            where: {
+                                application_id: appId
+                            }
+                        }
+                    ).then(function (results) {
+                        if (results && results[0] === 1) {
+                            //all finished processing - acknowledge the message from the queue so it can be removed
+                            callback(true, applicationJsonObject, response.statusCode, body);
+                        }
+                        else {
+                            console.log('Application ID ' + appId + ' not found in the database');
+                            callback(false, applicationJsonObject, response.statusCode, body);
+                        }
+                    }).catch(function (error) {
+                        console.error(JSON.stringify(error));
+                        callback(false, applicationJsonObject, response.statusCode, body);
+                    });
+                } else {
+                    console.error('error: ' + response.statusCode);
+                    console.error(body);
+                    callback(false, applicationJsonObject, response.statusCode, body);
+                }
+            }
+        );
     });
 }
 
@@ -358,6 +421,7 @@ function getApplicationObject(results) {
                     "documentCount": results.doc_count,
                     "paymentReference": results.payment_reference,
                     "paymentAmount": results.payment_amount,
+                    "paymentGateway": 'GOV_PAY',
                     "customerInternalReference": trimWhitespace(results.user_ref),
                     "feedbackConsent": trimWhitespace(results.feedback_consent),
                     "companyName": results.company_name != 'N/A' ? results.company_name : "",
@@ -425,6 +489,7 @@ function getApplicationObject(results) {
                     "documentCount": results.doc_count,
                     "paymentReference": results.payment_reference,
                     "paymentAmount": results.payment_amount,
+                    "paymentGateway": 'GOV_PAY',
                     "customerInternalReference": trimWhitespace(results.user_ref),
                     "feedbackConsent": trimWhitespace(results.feedback_consent),
                     "companyName":  results.company_name != 'N/A' ? results.company_name : "",
