@@ -161,6 +161,7 @@ function createEAppDataObject(eAppData, documentData) {
                 applicationReference: eAppData.unique_app_id,
                 documentCount: eAppData.doc_count,
                 paymentReference: eAppData.payment_reference,
+                paymentGateway: 'GOV_PAY',
                 paymentAmount: eAppData.payment_amount,
                 customerInternalReference: eAppData.user_ref.trim(),
                 feedbackConsent: eAppData.feedback_consent,
@@ -204,7 +205,7 @@ function processPaperApplication(appId, callback) {
 
         // calculate HMAC string and encode in base64
         var objectString = JSON.stringify(applicationJsonObject, null, 0);
-
+        var submissionApiUrl = config.submissionApiUrl;
         var hash = crypto.createHmac('sha512', config.hmacKey).update(new Buffer(objectString, 'utf-8')).digest('hex').toUpperCase();
 
         request.post({
