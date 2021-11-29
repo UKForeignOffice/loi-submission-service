@@ -6,6 +6,8 @@ var sequelize = new Sequelize(config.db);
 var ExportedApplicationData = sequelize.import("../models/exportedApplicationData");
 var Application = sequelize.import("../models/application");
 var SubmissionAttempts = sequelize.import("../models/submissionAttempts");
+var ExportedEAppData = sequelize.import('../models/exportedEAppData');
+var UploadedDocumentUrls = sequelize.import('../models/uploadedDocumentUrls');
 var pg = require('pg');
 delete pg.native;
 
@@ -24,15 +26,16 @@ function checkForApplications() {
             if (!results) {
                 return
             } else {
+                const { application_id, submissionAttempts, serviceType } = results.dataValues;
                 console.log('applications to process', results.dataValues.application_id)
-                processMsg(results.dataValues.application_id, results.dataValues.submissionAttempts)
+                processMsg(application_id, submissionAttempts, serviceType);
             }
         }
     )
 }
 
-function processMsg(appId, retryAttempts) {
-    processSubmissionQueue(appId, function (ok, applicationJsonObject, responseStatusCode, responseBody) {
+function processMsg(appId, retryAttempts, serviceType) {
+    processSubmissionQueue(appId, serviceType, function (ok, applicationJsonObject, responseStatusCode, responseBody) {
         try {
             if (ok) {
                 // ch.ack(msg);
@@ -101,12 +104,88 @@ function processMsg(appId, retryAttempts) {
     });
 }
 
-function processSubmissionQueue(msg, callback) {
-    var appId = msg;
-    console.log("Processing", appId);
-    var submissionApiUrl = config.submissionApiUrl;
-    var applicationJsonObject = {};
+function processSubmissionQueue(appId, serviceType, callback) {
+    const isEApplication = serviceType === 4;
+    if (isEApplication) {
+        processElectronicApplication(appId, callback)
+    } else {
+        processPaperApplication(appId, callback);
+    }
+}
 
+function processElectronicApplication(appId, callback) {
+    console.log('Processing electronic app', appId);
+
+    let eAppData;
+    ExportedEAppData.findOne({
+      where: {
+        application_id: appId,
+      },
+    }).then((results) => {
+        eAppData = results.dataValues;
+        return UploadedDocumentUrls.findAll({
+            where: {
+                application_id: appId,
+            },
+        })
+            .then((documentUrls) => {
+                const applicationJsonObject = createEAppDataObject(
+                    eAppData,
+                    documentUrls
+                );
+                return postToCasebook(applicationJsonObject, appId, callback);
+            })
+            .catch((err) => {
+                console.error(err);
+            });
+    }).catch((err) => {
+        console.error(err);
+    })
+}
+
+function createEAppDataObject(eAppData, documentData) {
+    return {
+        legalisationApplication: {
+            userId: 'legalisation',
+            caseType: 'eApostille Service',
+            timestamp: new Date().getTime().toString(),
+            applicant: {
+                forenames: eAppData.first_name.trim(),
+                surname: eAppData.last_name.trim(),
+                primaryTelephone: eAppData.telephone.trim(),
+                mobileTelephone: eAppData.mobileNo || '',
+                eveningTelephone: '',
+                email: eAppData.email,
+            },
+            fields: {
+                applicationReference: eAppData.unique_app_id,
+                documentCount: eAppData.doc_count,
+                paymentReference: eAppData.payment_reference,
+                paymentGateway: 'GOV_PAY',
+                paymentAmount: eAppData.payment_amount,
+                customerInternalReference: eAppData.user_ref.trim(),
+                feedbackConsent: eAppData.feedback_consent,
+                companyName: eAppData.company_name,
+                companyRegistrationNumber: '',
+                portalCustomerId: eAppData.user_id,
+                additionalInformation: '',
+            },
+            documents: generateDocmentArray(documentData),
+        },
+    };
+}
+
+function generateDocmentArray(documentData) {
+    return documentData.map((document) => {
+        return {
+            name: document.dataValues.filename,
+            downloadUrl: document.dataValues.uploaded_url,
+        };
+    });
+}
+
+function processPaperApplication(appId, callback) {
+    console.log('Processing paper app', appId);
 
     ExportedApplicationData.findOne({
         attributes: ["application_id", "applicationType", "first_name", "last_name", "telephone", "mobileNo", "email", "doc_count", "special_instructions", "user_ref", "payment_reference", "payment_amount", "postage_return_title", "postage_return_price", "postage_send_title", "postage_send_price", "main_house_name", "main_street", "main_town", "main_county", "main_country", "main_full_name", "main_postcode", "main_telephone", "main_mobileNo", "main_email", "alt_house_name", "alt_street", "alt_town", "alt_county", "alt_country",
@@ -126,7 +205,7 @@ function processSubmissionQueue(msg, callback) {
 
         // calculate HMAC string and encode in base64
         var objectString = JSON.stringify(applicationJsonObject, null, 0);
-
+        var submissionApiUrl = config.submissionApiUrl;
         var hash = crypto.createHmac('sha512', config.hmacKey).update(new Buffer(objectString, 'utf-8')).digest('hex').toUpperCase();
 
         request.post({
@@ -451,7 +530,116 @@ function logSubmissionAttempt(application_id, retry_number, submitted_json, stat
     });
 }
 
-//exposed methods
-exports.checkForApplications = function () {
-    checkForApplications();
+function postToCasebook(applicationJsonObject, appId, callback) {
+    var submissionApiUrl = config.submissionApiUrl;
+    // calculate HMAC string and encode in base64
+    var objectString = JSON.stringify(applicationJsonObject, null, 0);
+
+    var hash = crypto
+        .createHmac('sha512', config.hmacKey)
+        .update(Buffer.from(objectString, 'utf-8'))
+        .digest('hex')
+        .toUpperCase();
+
+    request.post(
+        {
+            headers: {
+                accept: 'application/json',
+                hash,
+                'content-type': 'application/json; charset=utf-8',
+                'api-version': '4',
+            },
+            url: submissionApiUrl,
+            //proxy: 'http://ldnisprx01:8080', //uncomment this line if running in your own debug environment
+            agentOptions: config.certificatePath
+                ? {
+                      cert: config.certificatePath,
+                      key: config.keyPath,
+                  }
+                : null,
+            json: true,
+            body: applicationJsonObject,
+        },
+        function (error, response, body) {
+            if (error) {
+                console.log('Error submitting to casebook', error);
+                callback(
+                    false,
+                    applicationJsonObject,
+                    response ? response.statusCode : '',
+                    body || ''
+                );
+            } else if (response.statusCode === 200) {
+                // Successful submit response code
+                console.log(
+                    'Application ' + appId + ' has been submitted successfully'
+                );
+
+                /*
+                 * Update the application table for submit status, case reference and app reference
+                 * (both received as a response from submission api)
+                 */
+                Application.update(
+                    {
+                        submitted: 'submitted',
+                        application_reference: body.applicationReference,
+                        case_reference: body.caseReference,
+                    },
+                    {
+                        where: {
+                            application_id: appId,
+                        },
+                    }
+                )
+                    .then(function (results) {
+                        if (results && results[0] === 1) {
+                            //all finished processing - acknowledge the message from the queue so it can be removed
+                            callback(
+                                true,
+                                applicationJsonObject,
+                                response.statusCode,
+                                body
+                            );
+                        } else {
+                            console.log(
+                                'Application ID ' +
+                                    appId +
+                                    ' not found in the database'
+                            );
+                            callback(
+                                false,
+                                applicationJsonObject,
+                                response.statusCode,
+                                body
+                            );
+                        }
+                    })
+                    .catch(function (error) {
+                        console.error(JSON.stringify(error));
+                        callback(
+                            false,
+                            applicationJsonObject,
+                            response.statusCode,
+                            body
+                        );
+                    });
+            } else {
+                console.error('error: ' + response.statusCode);
+                console.error(body);
+                callback(
+                    false,
+                    applicationJsonObject,
+                    response.statusCode,
+                    body
+                );
+            }
+        }
+    );
+}
+
+module.exports = {
+    checkForApplications,
+    // exported for testing
+    createEAppDataObject,
+    dbModels: { Application, ExportedEAppData, UploadedDocumentUrls },
 };

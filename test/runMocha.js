@@ -1,9 +1,9 @@
-var exit = process.exit;
+// var exit = process.exit;
 
-process.exit = function () {
-    setTimeout(function () {
-        exit();
-    }, 200);
-};
+// process.exit = function () {
+//     setTimeout(function () {
+//         exit();
+//     }, 200);
+// };
 
-require('../node_modules/mocha/bin/_mocha');
+// require('../node_modules/mocha/bin/_mocha');
