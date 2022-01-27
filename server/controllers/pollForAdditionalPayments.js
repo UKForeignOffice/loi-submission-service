@@ -1,14 +1,10 @@
-var Sequelize = require('sequelize');
 var request = require('request');
 var crypto = require('crypto');
 var config = require('../config/config');
-var sequelize = new Sequelize(config.db);
-var AdditionalPaymentDetails = sequelize.import("../models/AdditionalPaymentDetails");
-var pg = require('pg');
+var AdditionalPaymentDetails = require('../models/index').AdditionalPaymentDetails
 var moment = require('moment');
-delete pg.native;
-sequelize.options.logging = false
 var maxRetryAttempts = config.maxRetryAttempts;
+const { Op } = require("sequelize");
 
 var checkForAdditionalPayments = {
     checkForAdditionalPayments: async function() {
@@ -29,7 +25,7 @@ var checkForAdditionalPayments = {
                     where: {
                         submitted: 'queued',
                         submission_attempts: {
-                            "$lte": maxRetryAttempts
+                            [Op.lte]: maxRetryAttempts
                         }
                     }
                 })
