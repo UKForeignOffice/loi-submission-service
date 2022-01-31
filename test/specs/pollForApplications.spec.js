@@ -1,6 +1,4 @@
 const { expect } = require('chai');
-const sinon = require('sinon');
-const request = require('request');
 const pollForApplications = require('../../server/controllers/pollForApplications');
 const { checkForApplications, createEAppDataObject, dbModels } =
     pollForApplications;
