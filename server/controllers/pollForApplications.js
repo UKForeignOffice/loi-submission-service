@@ -119,6 +119,7 @@ function processElectronicApplication(appId, callback) {
         application_id: appId,
       },
     }).then((results) => {
+        console.log(results, 'results155');
         eAppData = results.dataValues;
         return UploadedDocumentUrls.findAll({
             where: {
