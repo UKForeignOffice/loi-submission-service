@@ -121,7 +121,7 @@ function processElectronicApplication(appId, callback) {
     }).then((results) => {
         if (!(results && results.dataValues)) {
             console.log('Cannot find ExportedEAppData record for application_id ' + appId + '.  Removing from queue.');
-            callback(true);
+            callback(false);
             return null;
         }
         eAppData = results.dataValues;
