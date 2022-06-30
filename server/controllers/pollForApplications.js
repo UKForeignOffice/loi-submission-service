@@ -8,6 +8,7 @@ var ExportedEAppData = require('../models/index').ExportedEAppData
 var UploadedDocumentUrls = require('../models/index').UploadedDocumentUrls
 var maxRetryAttempts = config.maxRetryAttempts;
 const { Op } = require("sequelize");
+const { sequelize } = require("../models");
 
 function checkForApplications() {
 
@@ -18,7 +19,7 @@ function checkForApplications() {
                 [Op.lte]: maxRetryAttempts
             }
         },
-        order: [[ 'createdAt', 'DESC' ]]
+        order: sequelize.random()
     }).then(function(results){
         if (!results) {
             return
