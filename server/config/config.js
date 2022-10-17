@@ -5,6 +5,8 @@ var dbConn = process.env.DBCONN;
 var submissionApiUrl = process.env.SUBMISSIONAPIURL;
 var certificatePath = process.env.CASEBOOKCERTIFICATE;
 var keyPath = process.env.CASEBOOKKEY;
+var edmsHost = process.env.EDMS_HOST;
+var edmsBearerToken = process.env.EDMS_BEARER_TOKEN;
 var additionalPaymentApiUrl = process.env.ADDITIONALPAYMENTAPIURL;
 var hmacKey = process.env.HMACKEY;
 var maxRetryAttempts = process.env.MAXRETRYATTEMPTS
@@ -18,6 +20,8 @@ var config = {
     "pollInterval": pollInterval,
     'db': dbConn,
     'submissionApiUrl': submissionApiUrl,
+    'edmsHost': edmsHost,
+    'edmsBearerToken': edmsBearerToken,
     'additionalPaymentApiUrl': additionalPaymentApiUrl,
     'certificatePath': certificatePath,
     'keyPath': keyPath,
