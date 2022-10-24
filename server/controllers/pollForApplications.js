@@ -24,17 +24,17 @@ function checkForApplications() {
         if (!results) {
             return
         } else {
-            const { application_id, submissionAttempts, serviceType } = results.dataValues;
+            const { application_id, submissionAttempts, serviceType, submission_destination } = results.dataValues;
             console.log('applications to process', results.dataValues.application_id)
-            processMsg(application_id, submissionAttempts, serviceType);
+            processMsg(application_id, submissionAttempts, serviceType, submission_destination);
         }
     }).catch(function (err){
         console.log(err)
     });
 }
 
-function processMsg(appId, retryAttempts, serviceType) {
-    processSubmissionQueue(appId, serviceType, function (ok, applicationJsonObject, responseStatusCode, responseBody) {
+function processMsg(appId, retryAttempts, serviceType, submission_destination) {
+    processSubmissionQueue(appId, serviceType, submission_destination, function (ok, applicationJsonObject, responseStatusCode, responseBody) {
         try {
             if (ok) {
                 // ch.ack(msg);
@@ -65,7 +65,7 @@ function processMsg(appId, retryAttempts, serviceType) {
                                     }
                                 }
                             ).then(function (results) {
-                            console.log(`Updated ${appId} submission status to failed`)
+                                console.log(`Updated ${appId} submission status to failed`)
                             })
 
                         }).catch(function (error) {
@@ -102,12 +102,19 @@ function processMsg(appId, retryAttempts, serviceType) {
 
     });
 }
-function processSubmissionQueue(appId, serviceType, callback) {
+function processSubmissionQueue(appId, serviceType, submission_destination, callback) {
     const isEApplication = serviceType === 4;
+    // Decide where to send the app. CASEBOOK or ORBIT
+    const isOrbit = submission_destination === 'ORBIT'
+
     if (isEApplication) {
         processElectronicApplication(appId, callback)
     } else {
-        processPaperApplication(appId, callback);
+        if (isOrbit) {
+            processPaperApplicationForOrbit(appId, callback);
+        } else {
+            processPaperApplication(appId, callback);
+        }
     }
 }
 
@@ -116,9 +123,9 @@ function processElectronicApplication(appId, callback) {
 
     let eAppData;
     ExportedEAppData.findOne({
-      where: {
-        application_id: appId,
-      },
+        where: {
+            application_id: appId,
+        },
     }).then((results) => {
         if (!(results && results.dataValues)) {
             console.log('Cannot find ExportedEAppData record for application_id ' + appId + '.  Removing from queue.');
@@ -184,6 +191,80 @@ function generateDocumentArray(documentData) {
             name: document.dataValues.filename,
             downloadUrl: document.dataValues.uploaded_url,
         };
+    });
+}
+
+function processPaperApplicationForOrbit(appId, callback) {
+    var applicationJsonObject = {};
+    console.log('Processing paper app', appId);
+
+    ExportedApplicationData.findOne({
+        attributes: ["application_id", "applicationType", "first_name", "last_name", "telephone", "mobileNo", "email", "doc_count", "special_instructions", "user_ref", "payment_reference", "payment_amount", "postage_return_title", "postage_return_price", "postage_send_title", "postage_send_price", "main_house_name", "main_street", "main_town", "main_county", "main_country", "main_full_name", "main_postcode", "main_telephone", "main_mobileNo", "main_email", "alt_house_name", "alt_street", "alt_town", "alt_county", "alt_country",
+            "alt_full_name", "alt_postcode", "alt_telephone","alt_mobileNo", "alt_email", "feedback_consent", "total_docs_count_price", "unique_app_id", "user_id", "company_name", "main_organisation", "alt_organisation"],
+        where: {
+            application_id: appId
+        }
+    }).then(function (results) {
+        if (!(results && results.dataValues)) {
+            console.log('Cannot find ExportedApplicationData record for application_id ' + appId + '.  Removing from queue.');
+            callback(true);
+            return null;
+        }
+
+        applicationJsonObject = getApplicationObject(results.dataValues);
+
+        var edmsSubmissionApiUrl = config.edmsHost + '/api/v1/submitApplication'
+        var edmsBearerToken = config.edmsBearerToken
+
+        request.post({
+                headers: {
+                    'content-type': 'application/json',
+                    'Authorization': `Bearer ${edmsBearerToken}`
+                },
+                url: edmsSubmissionApiUrl,
+                json: true,
+                body: applicationJsonObject
+            }, function (error, response, body) {
+                if (error) {
+                    console.log('Error submitting to orbit', error);
+                    callback(false, applicationJsonObject, (response ? response.statusCode : ''), (body || ''));
+                }
+                else if (response && response.statusCode === 200) { // Successful submit response code
+                    console.log('Application '+appId+' has been submitted successfully');
+
+                    /*
+                     * Update the application table for submit status, case reference and app reference
+                     * (both received as a response from submission api)
+                     */
+                    Application.update(
+                        {
+                            submitted: 'submitted',
+                            application_reference: body.ContactId,
+                            case_reference: body.CaseId
+                        }, {
+                            where: {
+                                application_id: appId
+                            }
+                        }
+                    ).then(function (results) {
+                        if (results && results[0] === 1) {
+                            //all finished processing - acknowledge the message from the queue so it can be removed
+                            callback(true, applicationJsonObject, response.statusCode, body);
+                        }
+                        else {
+                            console.log('Application ID ' + appId + ' not found in the database');
+                            callback(false, applicationJsonObject, response.statusCode, body);
+                        }
+                    }).catch(function (error) {
+                        console.error(JSON.stringify(error));
+                        callback(false, applicationJsonObject, response.statusCode, body);
+                    });
+                } else {
+                    console.error('ERROR', response.statusCode, body);
+                    callback(false, applicationJsonObject, response.statusCode, body);
+                }
+            }
+        );
     });
 }
 
@@ -558,9 +639,9 @@ function postToCasebook(applicationJsonObject, appId, callback) {
             url: submissionApiUrl,
             agentOptions: config.certificatePath
                 ? {
-                      cert: config.certificatePath,
-                      key: config.keyPath,
-                  }
+                    cert: config.certificatePath,
+                    key: config.keyPath,
+                }
                 : null,
             json: true,
             body: applicationJsonObject,
@@ -608,8 +689,8 @@ function postToCasebook(applicationJsonObject, appId, callback) {
                         } else {
                             console.log(
                                 'Application ID ' +
-                                    appId +
-                                    ' not found in the database'
+                                appId +
+                                ' not found in the database'
                             );
                             callback(
                                 false,
