@@ -108,7 +108,7 @@ function processSubmissionQueue(appId, serviceType, submission_destination, call
     const isOrbit = submission_destination === 'ORBIT'
 
     if (isEApplication) {
-        processElectronicApplication(appId, callback)
+        processElectronicApplication(appId, isOrbit, callback)
     } else {
         if (isOrbit) {
             processPaperApplicationForOrbit(appId, callback);
@@ -118,7 +118,7 @@ function processSubmissionQueue(appId, serviceType, submission_destination, call
     }
 }
 
-function processElectronicApplication(appId, callback) {
+function processElectronicApplication(appId, isOrbit, callback) {
     console.log('Processing electronic app', appId);
 
     let eAppData;
@@ -143,7 +143,11 @@ function processElectronicApplication(appId, callback) {
                     eAppData,
                     documentUrls
                 );
-                return postToCasebook(applicationJsonObject, appId, callback);
+                if (isOrbit) {
+                    return postToOrbit(applicationJsonObject, appId, callback);
+                } else {
+                    return postToCasebook(applicationJsonObject, appId, callback);
+                }
             })
             .catch((err) => {
                 console.error(err);
@@ -214,7 +218,8 @@ function processPaperApplicationForOrbit(appId, callback) {
         applicationJsonObject = getApplicationObject(results.dataValues);
 
         var edmsSubmissionApiUrl = config.edmsHost + '/api/v1/submitApplication'
-        var edmsBearerToken = config.edmsBearerToken
+        var edmsBearerTokenObject = JSON.parse(config.edmsBearerToken)
+        var edmsBearerToken = edmsBearerTokenObject['EDMS-Web-Submissions-Token']
 
         request.post({
                 headers: {
@@ -670,6 +675,98 @@ function postToCasebook(applicationJsonObject, appId, callback) {
                         submitted: 'submitted',
                         application_reference: body.applicationReference,
                         case_reference: body.caseReference,
+                    },
+                    {
+                        where: {
+                            application_id: appId,
+                        },
+                    }
+                )
+                    .then(function (results) {
+                        if (results && results[0] === 1) {
+                            //all finished processing - acknowledge the message from the queue so it can be removed
+                            callback(
+                                true,
+                                applicationJsonObject,
+                                response.statusCode,
+                                body
+                            );
+                        } else {
+                            console.log(
+                                'Application ID ' +
+                                appId +
+                                ' not found in the database'
+                            );
+                            callback(
+                                false,
+                                applicationJsonObject,
+                                response.statusCode,
+                                body
+                            );
+                        }
+                    })
+                    .catch(function (error) {
+                        console.error(JSON.stringify(error));
+                        callback(
+                            false,
+                            applicationJsonObject,
+                            response.statusCode,
+                            body
+                        );
+                    });
+            } else {
+                console.error('error: ' + response.statusCode);
+                console.error(body);
+                callback(
+                    false,
+                    applicationJsonObject,
+                    response.statusCode,
+                    body
+                );
+            }
+        }
+    );
+}
+
+function postToOrbit(applicationJsonObject, appId, callback) {
+    var edmsSubmissionApiUrl = config.edmsHost + '/api/v1/submitApplication'
+    var edmsBearerTokenObject = JSON.parse(config.edmsBearerToken)
+    var edmsBearerToken = edmsBearerTokenObject['EDMS-Web-Submissions-Token']
+
+    request.post(
+        {
+            headers: {
+                'content-type': 'application/json',
+                'Authorization': `Bearer ${edmsBearerToken}`
+            },
+            url: edmsSubmissionApiUrl,
+            json: true,
+            body: applicationJsonObject
+        },
+        function (error, response, body) {
+            if (error) {
+                console.log('Error submitting to ORBIT', error);
+                callback(
+                    false,
+                    applicationJsonObject,
+                    response ? response.statusCode : '',
+                    body || ''
+                );
+            } else if (response.statusCode === 200) {
+                // Successful submit response code
+                console.log(
+                    'Application ' + appId + ' has been submitted successfully'
+                );
+
+                /*
+                 * Update the application table for submit status, case reference and app reference
+                 * (both received as a response from submission api)
+                 */
+                Application.update(
+                    {
+                        submitted: 'submitted',
+                        application_reference: body.ContactId,
+                        case_reference: body.CaseId
                     },
                     {
                         where: {
