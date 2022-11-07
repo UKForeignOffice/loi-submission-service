@@ -2,6 +2,7 @@ var request = require('request');
 var crypto = require('crypto');
 var config = require('../config/config');
 var AdditionalPaymentDetails = require('../models/index').AdditionalPaymentDetails
+var Application = require('../models/index').Application
 var moment = require('moment');
 var maxRetryAttempts = config.maxRetryAttempts;
 const { Op } = require("sequelize");
@@ -11,9 +12,10 @@ var checkForAdditionalPayments = {
         try {
 
             let results = await checkForEligibleAdditionalPayments()
+
             if (results){
-                console.log('applications to process', results.dataValues.application_id)
-                await processMessage(results.dataValues)
+                let submissionDestination = await getSubmissionDestination(results.dataValues.application_id)
+                await processMessage(results.dataValues, submissionDestination.dataValues.submission_destination)
             }
         } catch (error) {
             console.log(error)
@@ -34,11 +36,33 @@ var checkForAdditionalPayments = {
             }
         }
 
-        async function processMessage(additionalPayment) {
+        async function getSubmissionDestination(application_id) {
+            try {
+                return await Application.findOne({
+                    attributes: ['submission_destination'],
+                    where: {
+                        unique_app_id: application_id
+                    }
+                })
+            } catch (error) {
+                console.log(error)
+            }
+        }
+
+        async function processMessage(additionalPayment, submissionDestination) {
             try {
                 console.log("Processing", additionalPayment.application_id)
+
+                const isOrbit = submissionDestination === 'ORBIT'
                 let payload = await generatePayload(additionalPayment)
-                let response = await submitToCasebook(additionalPayment, payload)
+
+                let response
+
+                if (isOrbit) {
+                    response = await submitToOrbit(additionalPayment, payload)
+                } else {
+                    response = await submitToCasebook(additionalPayment, payload)
+                }
 
                 if (response === 200) {
                     await markPaymentAsSubmitted(additionalPayment, response)
@@ -69,7 +93,7 @@ var checkForAdditionalPayments = {
                         "userId": 'legalisation',
                         "applicationReference": additionalPayment.application_id,
                         "reference": additionalPayment.payment_reference,
-                        "amount": parseFloat(additionalPayment.payment_amount),
+                        "amount": additionalPayment.payment_amount,
                         "gateway": 'GOV_PAY'
                     }
                 }
@@ -109,6 +133,45 @@ var checkForAdditionalPayments = {
                                 resolve(response.statusCode)
                             } else {
                                 console.log('Error processing application ' + additionalPayment.application_id + ' error: ' + error + ' return status: ' + response.statusCode);
+                                resolve(response.statusCode)
+                            }
+                        } catch (error) {
+                            console.log(error)
+                            reject(error)
+                        }
+                    })
+                })
+
+            } catch (error) {
+                console.log(error)
+            }
+        }
+
+        async function submitToOrbit(additionalPayment, payload) {
+            try {
+                let edmsAdditionalPaymentUrl = config.edmsHost + '/api/v1/paymentCapture'
+                let edmsBearerTokenObject = JSON.parse(config.edmsBearerToken)
+                let edmsBearerToken = edmsBearerTokenObject['EDMS-Web-Submissions-Token']
+
+                return new Promise(function(resolve, reject) {
+                    request.post({
+                        headers: {
+                            'content-type': 'application/json',
+                            'Authorization': `Bearer ${edmsBearerToken}`
+                        },
+                        url: edmsAdditionalPaymentUrl,
+                        json: true,
+                        body: payload
+                    }, function (error, response, body) {
+                        try {
+                            if (error) {
+                                console.log('Error submitting to ORBIT', error);
+                                resolve(response.statusCode)
+                            } else if (response.statusCode === 200) {
+                                console.log('Application ' + additionalPayment.application_id + ' has been submitted to ORBIT successfully');
+                                resolve(response.statusCode)
+                            } else {
+                                console.log('Error processing ORBIT application ' + additionalPayment.application_id + ' error: ' + error + ' return status: ' + response.statusCode);
                                 resolve(response.statusCode)
                             }
                         } catch (error) {
