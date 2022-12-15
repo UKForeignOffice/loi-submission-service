@@ -7,7 +7,7 @@
     "chai": "^3.4.1",
     "dotenv": "^8.6.0",
     "expect": "^1.13.4",
-    "express": "^4.17.2",
+    "express": "^4.17.3",
     "isnumeric": "^0.3.1",
     "istanbul": "^0.4.2",
     "jshint": "^2.13.3",
