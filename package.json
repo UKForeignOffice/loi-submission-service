@@ -17,7 +17,7 @@
     "pg": "^8.0.3",
     "pg-hstore": "^2.3.4",
     "request": "^2.88.2",
-    "sequelize": "^6.9.0",
+    "sequelize": "^6.29.0",
     "should": "^8.1.1",
     "sinon": "^11.1.2",
     "supertest": "3.0.0",
