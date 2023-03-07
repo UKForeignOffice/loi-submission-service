@@ -3,9 +3,9 @@ require('dotenv').config();
 // var rabbitMq = JSON.parse(env.RABBITMQ);
 var dbConn = process.env.DBCONN;
 var submissionApiUrl = process.env.SUBMISSIONAPIURL;
-var certificatePath = process.env.CASEBOOKCERTIFICATE;
-var keyPath = process.env.CASEBOOKKEY;
 var additionalPaymentApiUrl = process.env.ADDITIONALPAYMENTAPIURL;
+var certificatePath = process.env.NODE_ENV !== 'development' ? process.env.CASEBOOKCERTIFICATE : process.env.CASEBOOKCERTIFICATE.replace(/\\n/gm, '\n');
+var keyPath = process.env.NODE_ENV !== 'development' ? process.env.CASEBOOKKEY : process.env.CASEBOOKKEY.replace(/\\n/gm, '\n');
 var hmacKey = process.env.HMACKEY;
 var maxRetryAttempts = process.env.MAXRETRYATTEMPTS
 var pollInterval = process.env.POLLINTERVAL
