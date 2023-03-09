@@ -1,6 +1,8 @@
+const sinon = require('sinon');
+const request = require('request');
 const { expect } = require('chai');
 const pollForApplications = require('../../server/controllers/pollForApplications');
-const { checkForApplications, createEAppDataObject, dbModels } =
+const { checkForApplications, createEAppDataObject, dbModels} =
     pollForApplications;
 
 function assertWhenPromisesResolved(assertion) {
@@ -158,4 +160,5 @@ describe('pollForApplications eApp specific', () => {
             expect(dataObject).to.deep.equal(expectedResult);
         });
     });
+
 });
