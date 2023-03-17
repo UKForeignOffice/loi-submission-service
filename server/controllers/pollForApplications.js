@@ -235,7 +235,7 @@ function processPaperApplicationForOrbit(appId, callback) {
                     callback(false, applicationJsonObject, (response ? response.statusCode : ''), (body || ''));
                 }
                 else if (response && response.statusCode === 200) { // Successful submit response code
-                    console.log('Application '+appId+' has been submitted successfully');
+                    console.log('Application '+appId+' has been submitted to ORBIT successfully');
 
                     /*
                      * Update the application table for submit status, case reference and app reference
@@ -755,7 +755,7 @@ function postToOrbit(applicationJsonObject, appId, callback) {
             } else if (response.statusCode === 200) {
                 // Successful submit response code
                 console.log(
-                    'Application ' + appId + ' has been submitted successfully'
+                    'Application ' + appId + ' has been submitted to ORBIT successfully'
                 );
 
                 /*
