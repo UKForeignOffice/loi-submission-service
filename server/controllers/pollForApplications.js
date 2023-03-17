@@ -9,6 +9,7 @@ var UploadedDocumentUrls = require('../models/index').UploadedDocumentUrls
 var maxRetryAttempts = config.maxRetryAttempts;
 const { Op } = require("sequelize");
 const { sequelize } = require("../models");
+const {getEdmsAccessToken} = require("../services/HelperService");
 
 function checkForApplications() {
 
@@ -25,7 +26,7 @@ function checkForApplications() {
             return
         } else {
             const { application_id, submissionAttempts, serviceType, submission_destination } = results.dataValues;
-            console.log('applications to process', results.dataValues.application_id)
+            console.log(`Applications to process: ${results.dataValues.application_id}`);
             processMsg(application_id, submissionAttempts, serviceType, submission_destination);
         }
     }).catch(function (err){
@@ -47,8 +48,8 @@ function processMsg(appId, retryAttempts, serviceType, submission_destination) {
                 //after the retry interval set in the config
                 retryAttempts = retryAttempts + 1
 
-                console.log('maxRetryAttempts', maxRetryAttempts)
-                console.log('retryAttempts', retryAttempts)
+                console.log(`maxRetryAttempts: ${maxRetryAttempts}`);
+                console.log(`retryAttempts: ${retryAttempts}`);
 
                 if (retryAttempts >= maxRetryAttempts) {
                     console.log('Retry Attempt limit reached')
@@ -69,7 +70,7 @@ function processMsg(appId, retryAttempts, serviceType, submission_destination) {
                             })
 
                         }).catch(function (error) {
-                        console.log('ERROR', JSON.stringify(error));
+                        console.log(`ERROR: ${JSON.stringify(error)}`);
                     });
 
                 }
@@ -97,7 +98,7 @@ function processMsg(appId, retryAttempts, serviceType, submission_destination) {
                 }
             }
         } catch (e) {
-            console.log('Error', e);
+            console.log(`Error: ${e}`);
         }
 
     });
@@ -119,7 +120,7 @@ function processSubmissionQueue(appId, serviceType, submission_destination, call
 }
 
 function processElectronicApplication(appId, isOrbit, callback) {
-    console.log('Processing electronic app', appId);
+    console.log(`Processing electronic app ${appId}`);
 
     let eAppData;
     ExportedEAppData.findOne({
@@ -128,7 +129,7 @@ function processElectronicApplication(appId, isOrbit, callback) {
         },
     }).then((results) => {
         if (!(results && results.dataValues)) {
-            console.log('Cannot find ExportedEAppData record for application_id ' + appId + '.  Removing from queue.');
+            console.log(`Cannot find ExportedEAppData record for application_id ${appId}. Removing from queue.`);
             callback(false);
             return null;
         }
@@ -200,7 +201,7 @@ function generateDocumentArray(documentData) {
 
 function processPaperApplicationForOrbit(appId, callback) {
     var applicationJsonObject = {};
-    console.log('Processing paper app', appId);
+    console.log(`Processing paper app ${appId}`);
 
     ExportedApplicationData.findOne({
         attributes: ["application_id", "applicationType", "first_name", "last_name", "telephone", "mobileNo", "email", "doc_count", "special_instructions", "user_ref", "payment_reference", "payment_amount", "postage_return_title", "postage_return_price", "postage_send_title", "postage_send_price", "main_house_name", "main_street", "main_town", "main_county", "main_country", "main_full_name", "main_postcode", "main_telephone", "main_mobileNo", "main_email", "alt_house_name", "alt_street", "alt_town", "alt_county", "alt_country",
@@ -208,9 +209,9 @@ function processPaperApplicationForOrbit(appId, callback) {
         where: {
             application_id: appId
         }
-    }).then(function (results) {
+    }).then(async function (results) {
         if (!(results && results.dataValues)) {
-            console.log('Cannot find ExportedApplicationData record for application_id ' + appId + '.  Removing from queue.');
+            console.log(`Cannot find ExportedApplicationData record for application_id ${appId}. Removing from queue.`);
             callback(true);
             return null;
         }
@@ -218,8 +219,7 @@ function processPaperApplicationForOrbit(appId, callback) {
         applicationJsonObject = getApplicationObject(results.dataValues);
 
         var edmsSubmissionApiUrl = config.edmsHost + '/api/v1/submitApplication'
-        var edmsBearerTokenObject = JSON.parse(config.edmsBearerToken)
-        var edmsBearerToken = edmsBearerTokenObject['EDMS-Web-Submissions-Token']
+        var edmsBearerToken = await getEdmsAccessToken()
 
         request.post({
                 headers: {
@@ -231,11 +231,10 @@ function processPaperApplicationForOrbit(appId, callback) {
                 body: applicationJsonObject
             }, function (error, response, body) {
                 if (error) {
-                    console.log('Error submitting to orbit', error);
+                    console.log(`Error submitting to orbit: ${error}`);
                     callback(false, applicationJsonObject, (response ? response.statusCode : ''), (body || ''));
-                }
-                else if (response && response.statusCode === 200) { // Successful submit response code
-                    console.log('Application '+appId+' has been submitted to ORBIT successfully');
+                } else if (response && response.statusCode === 200) { // Successful submit response code
+                    console.log(`Application ${appId} has been submitted to ORBIT successfully`);
 
                     /*
                      * Update the application table for submit status, case reference and app reference
@@ -255,9 +254,8 @@ function processPaperApplicationForOrbit(appId, callback) {
                         if (results && results[0] === 1) {
                             //all finished processing - acknowledge the message from the queue so it can be removed
                             callback(true, applicationJsonObject, response.statusCode, body);
-                        }
-                        else {
-                            console.log('Application ID ' + appId + ' not found in the database');
+                        } else {
+                            console.log(`Application ID ${appId} not found in the database`);
                             callback(false, applicationJsonObject, response.statusCode, body);
                         }
                     }).catch(function (error) {
@@ -275,7 +273,7 @@ function processPaperApplicationForOrbit(appId, callback) {
 
 function processPaperApplication(appId, callback) {
     var applicationJsonObject = {};
-    console.log('Processing paper app', appId);
+    console.log(`Processing paper app ${appId}`);
 
     ExportedApplicationData.findOne({
         attributes: ["application_id", "applicationType", "first_name", "last_name", "telephone", "mobileNo", "email", "doc_count", "special_instructions", "user_ref", "payment_reference", "payment_amount", "postage_return_title", "postage_return_price", "postage_send_title", "postage_send_price", "main_house_name", "main_street", "main_town", "main_county", "main_country", "main_full_name", "main_postcode", "main_telephone", "main_mobileNo", "main_email", "alt_house_name", "alt_street", "alt_town", "alt_county", "alt_country",
@@ -285,7 +283,7 @@ function processPaperApplication(appId, callback) {
         }
     }).then(function (results) {
         if (!(results && results.dataValues)) {
-            console.log('Cannot find ExportedApplicationData record for application_id ' + appId + '.  Removing from queue.');
+            console.log(`Cannot find ExportedApplicationData record for application_id ${appId}. Removing from queue.`);
             callback(true);
             return null;
         }
@@ -315,11 +313,11 @@ function processPaperApplication(appId, callback) {
                 body: applicationJsonObject
             }, function (error, response, body) {
                 if (error) {
-                    console.log('Error submitting to casebook', error);
+                    console.log(`Error submitting to casebook: ${error}`);
                     callback(false, applicationJsonObject, (response ? response.statusCode : ''), (body || ''));
                 }
                 else if (response.statusCode === 200) { // Successful submit response code
-                    console.log('Application '+appId+' has been submitted successfully');
+                    console.log(`Application ${appId} has been submitted successfully`);
 
                     /*
                      * Update the application table for submit status, case reference and app reference
@@ -341,7 +339,7 @@ function processPaperApplication(appId, callback) {
                             callback(true, applicationJsonObject, response.statusCode, body);
                         }
                         else {
-                            console.log('Application ID ' + appId + ' not found in the database');
+                            console.log(`Application ID ${appId} not found in the database`);
                             callback(false, applicationJsonObject, response.statusCode, body);
                         }
                     }).catch(function (error) {
@@ -653,7 +651,7 @@ function postToCasebook(applicationJsonObject, appId, callback) {
         },
         function (error, response, body) {
             if (error) {
-                console.log('Error submitting to casebook', error);
+                console.log(`Error submitting to casebook ${error}`);
                 callback(
                     false,
                     applicationJsonObject,
@@ -662,9 +660,7 @@ function postToCasebook(applicationJsonObject, appId, callback) {
                 );
             } else if (response.statusCode === 200) {
                 // Successful submit response code
-                console.log(
-                    'Application ' + appId + ' has been submitted successfully'
-                );
+                console.log(`Application ${appId} has been submitted successfully`);
 
                 /*
                  * Update the application table for submit status, case reference and app reference
@@ -692,11 +688,7 @@ function postToCasebook(applicationJsonObject, appId, callback) {
                                 body
                             );
                         } else {
-                            console.log(
-                                'Application ID ' +
-                                appId +
-                                ' not found in the database'
-                            );
+                            console.log(`Application ID ${appId} not found in the database`);
                             callback(
                                 false,
                                 applicationJsonObject,
@@ -728,10 +720,9 @@ function postToCasebook(applicationJsonObject, appId, callback) {
     );
 }
 
-function postToOrbit(applicationJsonObject, appId, callback) {
+async function postToOrbit(applicationJsonObject, appId, callback) {
     var edmsSubmissionApiUrl = config.edmsHost + '/api/v1/submitApplication'
-    var edmsBearerTokenObject = JSON.parse(config.edmsBearerToken)
-    var edmsBearerToken = edmsBearerTokenObject['EDMS-Web-Submissions-Token']
+    var edmsBearerToken = await getEdmsAccessToken()
 
     request.post(
         {
@@ -745,7 +736,7 @@ function postToOrbit(applicationJsonObject, appId, callback) {
         },
         function (error, response, body) {
             if (error) {
-                console.log('Error submitting to ORBIT', error);
+                console.log(`Error submitting to ORBIT: ${error}`);
                 callback(
                     false,
                     applicationJsonObject,
@@ -754,9 +745,7 @@ function postToOrbit(applicationJsonObject, appId, callback) {
                 );
             } else if (response.statusCode === 200) {
                 // Successful submit response code
-                console.log(
-                    'Application ' + appId + ' has been submitted to ORBIT successfully'
-                );
+                console.log(`Application ${appId} has been submitted to ORBIT successfully`);
 
                 /*
                  * Update the application table for submit status, case reference and app reference
@@ -784,11 +773,7 @@ function postToOrbit(applicationJsonObject, appId, callback) {
                                 body
                             );
                         } else {
-                            console.log(
-                                'Application ID ' +
-                                appId +
-                                ' not found in the database'
-                            );
+                            console.log(`Application ID ${appId} not found in the database`);
                             callback(
                                 false,
                                 applicationJsonObject,

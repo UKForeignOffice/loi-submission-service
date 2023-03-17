@@ -6,6 +6,7 @@ var Application = require('../models/index').Application
 var moment = require('moment');
 var maxRetryAttempts = config.maxRetryAttempts;
 const { Op } = require("sequelize");
+const {getEdmsAccessToken} = require("../services/HelperService");
 
 var checkForAdditionalPayments = {
     checkForAdditionalPayments: async function() {
@@ -51,7 +52,7 @@ var checkForAdditionalPayments = {
 
         async function processMessage(additionalPayment, submissionDestination) {
             try {
-                console.log("Processing", additionalPayment.application_id)
+                console.log(`Processing ${additionalPayment.application_id}`);
 
                 const isOrbit = submissionDestination === 'ORBIT'
                 let payload = await generatePayload(additionalPayment)
@@ -70,11 +71,11 @@ var checkForAdditionalPayments = {
                     let currentSubmissionAttempts = await getSubmissionAttempts(additionalPayment)
                     let retryAttempts = currentSubmissionAttempts.submission_attempts + 1
 
-                    console.log('maxRetryAttempts', maxRetryAttempts)
-                    console.log('retryAttempts', retryAttempts)
+                    console.log(`maxRetryAttempts: ${maxRetryAttempts}`);
+                    console.log(`retryAttempts: ${retryAttempts}`);
 
                     if (retryAttempts >= maxRetryAttempts) {
-                        console.log('Retry Attempt limit reached')
+                        console.log(`Retry Attempt limit reached`)
                         await markPaymentAsFailed(additionalPayment, retryAttempts, response)
                     } else {
                         await updateSubmissionAttempts(additionalPayment, retryAttempts, response)
@@ -126,13 +127,13 @@ var checkForAdditionalPayments = {
                     }, function (error, response, body) {
                         try {
                             if (error) {
-                                console.log('Error submitting to casebook', error);
+                                console.log(`Error submitting to casebook: ${error}`);
                                 resolve(response.statusCode)
                             } else if (response.statusCode === 200) {
-                                console.log('Application ' + additionalPayment.application_id + ' has been submitted successfully');
+                                console.log(`Application ${additionalPayment.application_id} has been submitted successfully`);
                                 resolve(response.statusCode)
                             } else {
-                                console.log('Error processing application ' + additionalPayment.application_id + ' error: ' + error + ' return status: ' + response.statusCode);
+                                console.log(`Error processing application ${additionalPayment.application_id} error: ${error} return status: ${response.statusCode}`);
                                 resolve(response.statusCode)
                             }
                         } catch (error) {
@@ -150,8 +151,7 @@ var checkForAdditionalPayments = {
         async function submitToOrbit(additionalPayment, payload) {
             try {
                 let edmsAdditionalPaymentUrl = config.edmsHost + '/api/v1/paymentCapture'
-                let edmsBearerTokenObject = JSON.parse(config.edmsBearerToken)
-                let edmsBearerToken = edmsBearerTokenObject['EDMS-Web-Submissions-Token']
+                let edmsBearerToken = await getEdmsAccessToken()
 
                 return new Promise(function(resolve, reject) {
                     request.post({
@@ -165,13 +165,13 @@ var checkForAdditionalPayments = {
                     }, function (error, response, body) {
                         try {
                             if (error) {
-                                console.log('Error submitting to ORBIT', error);
+                                console.log(`Error submitting to ORBIT: ${error}`);
                                 resolve(response.statusCode)
                             } else if (response.statusCode === 200) {
-                                console.log('Application ' + additionalPayment.application_id + ' has been submitted to ORBIT successfully');
+                                console.log(`Application ${additionalPayment.application_id} has been submitted to ORBIT successfully`);
                                 resolve(response.statusCode)
                             } else {
-                                console.log('Error processing ORBIT application ' + additionalPayment.application_id + ' error: ' + error + ' return status: ' + response.statusCode);
+                                console.log(`Error processing ORBIT application ${additionalPayment.application_id} error: ${error} return status: ${response.statusCode}`);
                                 resolve(response.statusCode)
                             }
                         } catch (error) {
