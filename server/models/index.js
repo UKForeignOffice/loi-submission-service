@@ -14,7 +14,7 @@ const opts = {
         multiplier: 2,
         max: 5000,
     },
-    logging: process.env.NODE_ENV !== 'development' ? false : console.log,
+    logging: false
 };
 
 // initialise Sequelize
