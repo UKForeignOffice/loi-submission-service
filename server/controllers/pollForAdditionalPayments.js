@@ -36,7 +36,7 @@ var checkForAdditionalPayments = {
 
         async function processMessage(additionalPayment) {
             try {
-                console.log("Processing", additionalPayment.application_id)
+                console.log(`Processing ${additionalPayment.application_id}`);
                 let payload = await generatePayload(additionalPayment)
                 let response = await submitToCasebook(additionalPayment, payload)
 
@@ -46,11 +46,11 @@ var checkForAdditionalPayments = {
                     let currentSubmissionAttempts = await getSubmissionAttempts(additionalPayment)
                     let retryAttempts = currentSubmissionAttempts.submission_attempts + 1
 
-                    console.log('maxRetryAttempts', maxRetryAttempts)
-                    console.log('retryAttempts', retryAttempts)
+                    console.log(`maxRetryAttempts ${maxRetryAttempts}`);
+                    console.log(`retryAttempts ${retryAttempts}`);
 
                     if (retryAttempts >= maxRetryAttempts) {
-                        console.log('Retry Attempt limit reached')
+                        console.log(`Retry Attempt limit reached`);
                         await markPaymentAsFailed(additionalPayment, retryAttempts, response)
                     } else {
                         await updateSubmissionAttempts(additionalPayment, retryAttempts, response)
@@ -102,13 +102,13 @@ var checkForAdditionalPayments = {
                     }, function (error, response, body) {
                         try {
                             if (error) {
-                                console.log('Error submitting to casebook', error);
+                                console.log(`Error submitting to casebook ${error}`);
                                 resolve(response.statusCode)
                             } else if (response.statusCode === 200) {
-                                console.log('Application ' + additionalPayment.application_id + ' has been submitted successfully');
+                                console.log(`Application ${additionalPayment.application_id} has been submitted successfully`);
                                 resolve(response.statusCode)
                             } else {
-                                console.log('Error processing application ' + additionalPayment.application_id + ' error: ' + error + ' return status: ' + response.statusCode);
+                                console.log(`Error processing application ${additionalPayment.application_id} error: ${error} return status: ${response.statusCode}`);
                                 resolve(response.statusCode)
                             }
                         } catch (error) {
