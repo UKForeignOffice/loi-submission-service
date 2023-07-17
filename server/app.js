@@ -2,7 +2,7 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var config = require('./config/config');
-var pollForApplicationsController = require('./controllers/pollForApplications');
+var pollForApplicationsController = require('./controllers/pollForApplications2');
 var pollForAdditionalPaymentsController = require('./controllers/pollForAdditionalPayments');
 require('./config/logs');
 // Create our Express application

@@ -22,7 +22,10 @@ module.exports = function(sequelize, DataTypes) {
             },
             submission_destination: {
                 type: DataTypes.STRING()
-            }
+            },
+            application_reference: {
+                type: DataTypes.STRING()
+            },
         },
         {tableName: 'Application'}
     );
