@@ -25,7 +25,6 @@ function checkForApplications() {
             return
         } else {
             const { application_id, submissionAttempts, serviceType } = results.dataValues;
-            console.log('applications to process', results.dataValues.application_id)
             processMsg(application_id, submissionAttempts, serviceType);
         }
     }).catch(function (err){
@@ -37,7 +36,7 @@ function processMsg(appId, retryAttempts, serviceType) {
     processSubmissionQueue(appId, serviceType, function (ok, applicationJsonObject, responseStatusCode, responseBody) {
         try {
             if (ok) {
-                // ch.ack(msg);
+                console.log(`Updating submission attempts table for ${appId}`)
                 logSubmissionAttempt(appId, retryAttempts, applicationJsonObject,'submitted', responseStatusCode, responseBody);
             }
             else {
@@ -47,12 +46,8 @@ function processMsg(appId, retryAttempts, serviceType) {
                 //after the retry interval set in the config
                 retryAttempts = retryAttempts + 1
 
-                console.log('maxRetryAttempts', maxRetryAttempts)
-                console.log('retryAttempts', retryAttempts)
-
                 if (retryAttempts >= maxRetryAttempts) {
-                    console.log('Retry Attempt limit reached')
-                    //if we have reached maxRetryAttempts, update the database to indicate failure
+                    console.log(`Updating submission attempts table for ${appId}`)
                     logSubmissionAttempt(appId, retryAttempts, applicationJsonObject,'failed', responseStatusCode, responseBody)
                         .then(function (results) {
                             Application.update(
@@ -69,15 +64,13 @@ function processMsg(appId, retryAttempts, serviceType) {
                             })
 
                         }).catch(function (error) {
-                        console.log('ERROR', JSON.stringify(error));
+                        console.log(`ERROR ${JSON.stringify(error)}`);
                     });
 
                 }
                 else {
-                    //reject the message to remove it from the main queue
-                    // ch.reject(msg, false);
-                    //increment the retry attempts in the header
-                    var messageOptions = {headers: {retryAttempts: retryAttempts}};
+
+                    console.log(`Updating retry attempts for ${appId} (${retryAttempts}/${maxRetryAttempts})`)
 
                     Application.update(
                         {
@@ -88,16 +81,13 @@ function processMsg(appId, retryAttempts, serviceType) {
                             }
                         }
                     ).then(function(){
-                        logSubmissionAttempt(appId, retryAttempts, applicationJsonObject,'failed', responseStatusCode, responseBody);
+                        console.log(`Updating submission attempts table for ${appId}`)
+                        logSubmissionAttempt(appId, retryAttempts, applicationJsonObject, 'failed', responseStatusCode, responseBody);
                     })
-
-                    //and publish it to the retryQueue where it will be dead-lettered after the configured retryDelay
-                    //and thus moved back to the main queue which must be configured as the dead-letter queue for the retryQueue
-                    // ch.publish(retryExchange, retryQueue, new Buffer(msg.content.toString()), messageOptions);
                 }
             }
         } catch (e) {
-            console.log('Error', e);
+            console.log(`Error ${e}`);
         }
 
     });
@@ -112,7 +102,7 @@ function processSubmissionQueue(appId, serviceType, callback) {
 }
 
 function processElectronicApplication(appId, callback) {
-    console.log('Processing electronic app', appId);
+    console.log(`Processing ${appId} (e-App)`);
 
     let eAppData;
     ExportedEAppData.findOne({
@@ -121,7 +111,7 @@ function processElectronicApplication(appId, callback) {
       },
     }).then((results) => {
         if (!(results && results.dataValues)) {
-            console.log('Cannot find ExportedEAppData record for application_id ' + appId + '.  Removing from queue.');
+            console.log(`Cannot find ExportedEAppData record for ${appId}`);
             callback(false);
             return null;
         }
@@ -189,7 +179,7 @@ function generateDocumentArray(documentData) {
 
 function processPaperApplication(appId, callback) {
     var applicationJsonObject = {};
-    console.log('Processing paper app', appId);
+    console.log(`Processing ${appId} (paper)`);
 
     ExportedApplicationData.findOne({
         attributes: ["application_id", "applicationType", "first_name", "last_name", "telephone", "mobileNo", "email", "doc_count", "special_instructions", "user_ref", "payment_reference", "payment_amount", "postage_return_title", "postage_return_price", "postage_send_title", "postage_send_price", "main_house_name", "main_street", "main_town", "main_county", "main_country", "main_full_name", "main_postcode", "main_telephone", "main_mobileNo", "main_email", "alt_house_name", "alt_street", "alt_town", "alt_county", "alt_country",
@@ -199,7 +189,7 @@ function processPaperApplication(appId, callback) {
         }
     }).then(function (results) {
         if (!(results && results.dataValues)) {
-            console.log('Cannot find ExportedApplicationData record for application_id ' + appId + '.  Removing from queue.');
+            console.log(`Cannot find ExportedApplicationData record for ${appId}`);
             callback(true);
             return null;
         }
@@ -229,11 +219,11 @@ function processPaperApplication(appId, callback) {
                 body: applicationJsonObject
             }, function (error, response, body) {
                 if (error) {
-                    console.log('Error submitting to casebook', error);
+                    console.log(`Error submitting to casebook ${error}`);
                     callback(false, applicationJsonObject, (response ? response.statusCode : ''), (body || ''));
                 }
                 else if (response.statusCode === 200) { // Successful submit response code
-                    console.log('Application '+appId+' has been submitted successfully');
+                    console.log(`Application ${appId} has been submitted successfully`);
 
                     /*
                      * Update the application table for submit status, case reference and app reference
@@ -255,7 +245,7 @@ function processPaperApplication(appId, callback) {
                             callback(true, applicationJsonObject, response.statusCode, body);
                         }
                         else {
-                            console.log('Application ID ' + appId + ' not found in the database');
+                            console.log(`Application ID ${appId} not found in the database`);
                             callback(false, applicationJsonObject, response.statusCode, body);
                         }
                     }).catch(function (error) {
@@ -263,7 +253,7 @@ function processPaperApplication(appId, callback) {
                         callback(false, applicationJsonObject, response.statusCode, body);
                     });
                 } else {
-                    console.error('error: ' + response.statusCode);
+                    console.error(`error: ${response.statusCode}`);
                     console.error(body);
                     callback(false, applicationJsonObject, response.statusCode, body);
                 }
@@ -537,6 +527,7 @@ function logSubmissionAttempt(application_id, retry_number, submitted_json, stat
 }
 
 function postToCasebook(applicationJsonObject, appId, callback) {
+    console.log(`Attempting to submit ${appId} to CASEBOOK`)
     var submissionApiUrl = config.submissionApiUrl;
     // calculate HMAC string and encode in base64
     var objectString = JSON.stringify(applicationJsonObject, null, 0);
@@ -567,7 +558,7 @@ function postToCasebook(applicationJsonObject, appId, callback) {
         },
         function (error, response, body) {
             if (error) {
-                console.log('Error submitting to casebook', error);
+                console.log(`Error submitting ${appId} to CASEBOOK`);
                 callback(
                     false,
                     applicationJsonObject,
@@ -576,9 +567,7 @@ function postToCasebook(applicationJsonObject, appId, callback) {
                 );
             } else if (response.statusCode === 200) {
                 // Successful submit response code
-                console.log(
-                    'Application ' + appId + ' has been submitted successfully'
-                );
+                console.log(`Application ${appId} has been submitted successfully`);
 
                 /*
                  * Update the application table for submit status, case reference and app reference
@@ -606,11 +595,8 @@ function postToCasebook(applicationJsonObject, appId, callback) {
                                 body
                             );
                         } else {
-                            console.log(
-                                'Application ID ' +
-                                    appId +
-                                    ' not found in the database'
-                            );
+                            console.log(`Application ${appId} not found in the database`);
+
                             callback(
                                 false,
                                 applicationJsonObject,
@@ -629,7 +615,7 @@ function postToCasebook(applicationJsonObject, appId, callback) {
                         );
                     });
             } else {
-                console.error('error: ' + response.statusCode);
+                console.error(`error: ${response.statusCode}`);
                 console.error(body);
                 callback(
                     false,

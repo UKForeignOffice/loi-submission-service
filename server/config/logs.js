@@ -8,8 +8,7 @@ const logger = createLogger({
             format: combine(
                 timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
                 printf(({ level, message, timestamp, ...rest }) => {
-                    const meta = Object.keys(rest).length ? JSON.stringify(rest, null, 2) : '';
-                    return `[${timestamp}] ${level.toUpperCase()}: ${message} ${meta}`;
+                    return `[${timestamp}] ${level.toUpperCase()}: ${message}`;
                 }),
             ),
         }),
@@ -18,8 +17,7 @@ const logger = createLogger({
             format: combine(
                 timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
                 printf(({ level, message, timestamp, ...rest }) => {
-                    const meta = Object.keys(rest).length ? JSON.stringify(rest, null, 2) : '';
-                    return `[${timestamp}] ${level.toUpperCase()}: ${message} ${meta}`;
+                    return `[${timestamp}] ${level.toUpperCase()}: ${message}`;
                 }),
             ),
         }),
