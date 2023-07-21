@@ -6,287 +6,312 @@ const Application = require('../models/index').Application
 const SubmissionAttempts = require('../models/index').SubmissionAttempts
 const ExportedEAppData = require('../models/index').ExportedEAppData
 const UploadedDocumentUrls = require('../models/index').UploadedDocumentUrls
-const maxRetryAttempts = config.maxRetryAttempts;
+const maxRetryAttempts = parseInt(config.maxRetryAttempts);
 const { Op } = require("sequelize");
 const { sequelize } = require("../models");
 const {getEdmsAccessToken} = require("../services/HelperService");
 const {Agent} = require("https");
 
-        async function checkForApplications() {
+async function checkForApplications() {
+    try {
+        const results = await checkForEligibleApplications();
+        if (results) {
+            const {application_id, submissionAttempts, serviceType, submission_destination} = results;
+            await processApplication(application_id, submissionAttempts, serviceType, submission_destination);
+        }
+    } catch (error) {
+        console.error(`checkForApplications: ${error}`);
+    }
+}
 
-            try {
-                const results = await checkForEligibleApplications();
+async function checkForEligibleApplications() {
+    try {
+        return await Application.findOne({
+            where: {
+                submitted: 'queued',
+                submissionAttempts: {
+                    [Op.lt]: maxRetryAttempts,
+                },
+            },
+            order: sequelize.random(),
+        });
+    } catch (error) {
+        console.error(`checkForEligibleApplications: ${error}`);
+    }
+}
 
-                if (results) {
-                    const {application_id, submissionAttempts, serviceType, submission_destination} = results;
-                    await processApplication(application_id, submissionAttempts, serviceType, submission_destination);
-                }
-            } catch (error) {
-                console.error(`checkForApplications: ${error}`);
+async function processApplication(application_id, submission_attempts, service_type, submission_destination) {
+    try {
+        const isOrbit = submission_destination === 'ORBIT';
+        const isEApp = service_type === 4;
+        await updateApplicationAsProcessing(application_id, isEApp);
+        if (isEApp) {
+            const eAppData = await getEAppData(application_id);
+            if (!eAppData) {
+                console.log(`No exported app data found for ${application_id}`);
+                await updateApplicationAsFailed(application_id);
+            } else {
+                const eAppDocumentUrls = await getEAppDocumentUrls(application_id)
+                const applicationJsonObject = await generateEAppObject(
+                    eAppData,
+                    eAppDocumentUrls
+                );
+                if (isOrbit) await postToOrbit(applicationJsonObject, application_id, submission_attempts);
+                if (!isOrbit ) await postToCasebook(applicationJsonObject, application_id, submission_attempts);
+            }
+        } else if (!isEApp) {
+            let appData = await getAppData(application_id)
+            if (!appData) {
+                console.log(`No exported app data found for ${application_id}`);
+                await updateApplicationAsFailed(application_id);
+            } else {
+                const applicationJsonObject = await generateApplicationObject(appData)
+                if (isOrbit) await postToOrbit(applicationJsonObject, application_id, submission_attempts);
+                if (!isOrbit ) await postToCasebook(applicationJsonObject, application_id, submission_attempts);
             }
         }
+    } catch (error) {
+        console.error(`processApplication: ${error}`);
+    }
+}
 
-        async function checkForEligibleApplications() {
-            try {
-                return await Application.findOne({
-                    where: {
-                        submitted: 'queued',
-                        submissionAttempts: {
-                            [Op.lte]: maxRetryAttempts,
-                        },
-                    },
-                    order: sequelize.random(),
-                });
-            } catch (error) {
-                console.error(`checkForEligibleApplications: ${error}`);
+async function getEAppData(application_id) {
+    try {
+        return await ExportedEAppData.findOne({
+            where: {
+                application_id: application_id
+            },
+        });
+    } catch (error) {
+        console.error(`getEAppData: ${error}`);
+    }
+}
+
+async function getAppData(application_id) {
+    try {
+        return await ExportedApplicationData.findOne({
+            where: {
+                application_id: application_id
+            },
+        });
+    } catch (error) {
+        console.error(`getAppData: ${error}`);
+    }
+}
+
+async function getEAppDocumentUrls(application_id) {
+    try {
+        return await UploadedDocumentUrls.findAll({
+            where: {
+                application_id: application_id
+            },
+        });
+    } catch (error) {
+        console.error(`getEAppDocumentUrls: ${error}`);
+    }
+}
+
+async function updateApplicationAsProcessing(application_id, isEApp) {
+    console.log(`Processing ${application_id}${isEApp ? ' (eApp)' : ' (paper)'}`);
+    try {
+        return await Application.update({
+            submitted: 'processing'
+        }, {
+            where: {
+                application_id: application_id
+            }
+        });
+    } catch (error) {
+        console.error(`updateApplicationAsProcessing: ${error}`);
+    }
+}
+
+async function updateApplicationAsFailed(application_id) {
+    console.log(`Marking ${application_id} as failed`)
+    try {
+        return await Application.update({
+            submitted: 'failed'
+        }, {
+            where: {
+                application_id: application_id
+            }
+        });
+    } catch (error) {
+        console.error(`updateApplicationAsFailed: ${error}`);
+    }
+}
+
+async function placeBackInTheQueue(application_id, submission_attempts) {
+    console.log(`Updating ${application_id} submission attempts (${submission_attempts}/${maxRetryAttempts})`)
+    try {
+        return await Application.update({
+            submissionAttempts: submission_attempts,
+            submitted: 'queued'
+        }, {
+            where: {
+                application_id: application_id
+            }
+        });
+    } catch (error) {
+        console.error(`placeBackInTheQueue: ${error}`);
+    }
+}
+
+async function updateApplicationAsSubmitted(application_id, response, submission_attempts) {
+    console.log(`Marking ${application_id} as submitted`)
+    try {
+        return await Application.update({
+            submitted: 'submitted',
+            application_reference: (response.data.contactId) ? response.data.contactId : response.data.applicationReference,
+            case_reference: (response.data.caseId) ? response.data.caseId : response.data.caseReference,
+            submissionAttempts: submission_attempts
+        }, {
+            where: {
+                application_id: application_id
+            }
+        });
+    } catch (error) {
+        console.error(`updateApplicationAsSubmitted: ${error}`);
+    }
+}
+
+async function generateEAppObject(eAppData, eAppDocumentUrls) {
+    try {
+        return {
+            legalisationApplication: {
+                userId: 'legalisation',
+                caseType: 'eApostille Service',
+                timestamp: new Date().getTime().toString(),
+                applicant: {
+                    forenames: eAppData.first_name?.trim(),
+                    surname: eAppData.last_name?.trim(),
+                    primaryTelephone: eAppData.telephone?.trim(),
+                    mobileTelephone: eAppData.mobileNo || '',
+                    eveningTelephone: '',
+                    email: eAppData.email,
+                },
+                fields: {
+                    applicationReference: eAppData.unique_app_id,
+                    documentCount: eAppData.doc_count,
+                    paymentReference: eAppData.payment_reference,
+                    paymentGateway: 'GOV_PAY',
+                    paymentAmount: eAppData.payment_amount,
+                    customerInternalReference: eAppData.user_ref?.trim(),
+                    feedbackConsent: eAppData.feedback_consent,
+                    companyName: eAppData.company_name,
+                    companyRegistrationNumber: '',
+                    portalCustomerId: eAppData.user_id,
+                    additionalInformation: '',
+                },
+                documents: await generateDocumentArray(eAppDocumentUrls),
+            },
+        }
+    } catch (error) {
+        console.error(`generateEAppObject: ${error}`);
+    }
+}
+
+async function generateDocumentArray(eAppDocumentUrls) {
+    try {
+        return eAppDocumentUrls.map((document) => ({
+            name: document.filename,
+            downloadUrl: document.uploaded_url,
+        }));
+    } catch (error) {
+        console.error(`generateDocumentArray: ${error}`);
+    }
+}
+
+async function postToOrbit(applicationJsonObject, application_id, submission_attempts) {
+    const edmsSubmissionApiUrl = config.edmsHost + '/api/v1/submitApplication';
+    const edmsBearerToken = await getEdmsAccessToken();
+    const this_submission_attempt = submission_attempts + 1
+    try {
+        if (!edmsBearerToken) throw new Error('Error fetching access token')
+        const response = await axios.post(edmsSubmissionApiUrl, applicationJsonObject, {
+            headers: {
+                'content-type': 'application/json',
+                'Authorization': `Bearer ${edmsBearerToken}`
+            },
+            timeout: 5000
+        });
+        if (response && response.status === 200) {
+            await updateApplicationAsSubmitted(application_id, response, this_submission_attempt)
+            await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'submitted', response.status, response.data)
+        } else {
+            await placeBackInTheQueue(application_id, this_submission_attempt)
+            await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'failed', response.status, response.data)
+            if (submission_attempts === maxRetryAttempts) {
+                await updateApplicationAsFailed(application_id)
             }
         }
+    } catch (error) {
+        console.error(`postToOrbit: ${error}`);
+        await placeBackInTheQueue(application_id, this_submission_attempt)
+        await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'failed', null, null)
+        if (this_submission_attempt === maxRetryAttempts) {
+            await updateApplicationAsFailed(application_id)
+        }
+    }
+}
 
-        async function processApplication(application_id, submission_attempts, service_type, submission_destination) {
-            try {
-                const isOrbit = submission_destination === 'ORBIT';
-                const isEApp = service_type === 4;
-                console.log(`Processing ${application_id}${isEApp ? ' (eApp)' : ' (paper)'}`);
-
-                if (isEApp) {
-                    const eAppData = await getEAppData(application_id);
-                    if (!eAppData) {
-                        console.log(`No exported app data found for ${application_id}`);
-                        await updateApplicationAsFailed(application_id);
-                    } else {
-                        const eAppDocumentUrls = await getEAppDocumentUrls(application_id)
-                        const applicationJsonObject = await generateEAppObject(
-                            eAppData,
-                            eAppDocumentUrls
-                        );
-                        if (isOrbit) await postToOrbit(applicationJsonObject, application_id, submission_attempts);
-                        if (!isOrbit ) await postToCasebook(applicationJsonObject, application_id, submission_attempts);
-                    }
-                } else if (!isEApp) {
-                    let appData = await getAppData(application_id)
-                    if (!appData) {
-                        console.log(`No exported app data found for ${application_id}`);
-                        await updateApplicationAsFailed(application_id);
-                    } else {
-                        const applicationJsonObject = await generateApplicationObject(appData)
-                        if (isOrbit) await postToOrbit(applicationJsonObject, application_id, submission_attempts);
-                        if (!isOrbit ) await postToCasebook(applicationJsonObject, application_id, submission_attempts);
-                    }
-                }
-            } catch (error) {
-                console.error(`processApplication: ${error}`);
+async function postToCasebook(applicationJsonObject, application_id, submission_attempts) {
+    const submissionApiUrl = config.submissionApiUrl;
+    const objectString = JSON.stringify(applicationJsonObject, null, 0);
+    const this_submission_attempt = submission_attempts + 1
+    const hash = crypto
+        .createHmac('sha512', config.hmacKey)
+        .update(Buffer.from(objectString, 'utf-8'))
+        .digest('hex')
+        .toUpperCase();
+    try {
+        const httpsAgent = new Agent({
+            rejectUnauthorized: true,
+            cert: config.certificatePath,
+            key: config.keyPath
+        })
+        const response = await axios.post(submissionApiUrl, applicationJsonObject, {
+            headers: {
+                accept: 'application/json',
+                hash,
+                'content-type': 'application/json; charset=utf-8',
+                'api-version': '4',
+            },
+            httpsAgent,
+            timeout: 5000
+        });
+        if (response && response.status === 200) {
+            await updateApplicationAsSubmitted(application_id, response, this_submission_attempt)
+            await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'submitted', response.status, response.data)
+        } else {
+            await placeBackInTheQueue(application_id, this_submission_attempt)
+            await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'failed', response.status, response.data)
+            if (submission_attempts === maxRetryAttempts) {
+                await updateApplicationAsFailed(application_id)
             }
         }
-
-        async function getEAppData(application_id) {
-            try {
-                return await ExportedEAppData.findOne({
-                    where: {
-                        application_id: application_id
-                        },
-                    });
-            } catch (error) {
-                console.error(`getEAppData: ${error}`);
-            }
+    } catch (error) {
+        console.error(`postToCasebook: ${error}`);
+        await placeBackInTheQueue(application_id, this_submission_attempt)
+        await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'failed', null, null)
+        if (this_submission_attempt === maxRetryAttempts) {
+            await updateApplicationAsFailed(application_id)
         }
+    }
+}
 
-        async function getAppData(application_id) {
-            try {
-                return await ExportedApplicationData.findOne({
-                    where: {
-                        application_id: application_id
-                    },
-                });
-            } catch (error) {
-                console.error(`getAppData: ${error}`);
-            }
-        }
-
-        async function getEAppDocumentUrls(application_id) {
-            try {
-                return await UploadedDocumentUrls.findAll({
-                    where: {
-                        application_id: application_id
-                    },
-                });
-            } catch (error) {
-                console.error(`getEAppDocumentUrls: ${error}`);
-            }
-        }
-
-        async function updateApplicationAsFailed(application_id) {
-            console.log(`Marking ${application_id} as failed`)
-            try {
-                return await Application.update({
-                    submitted: 'failed'
-                }, {
-                    where: {
-                        application_id: application_id
-                    }
-                });
-            } catch (error) {
-                console.error(`updateApplicationAsFailed: ${error}`);
-            }
-        }
-
-        async function updateApplicationSubmissionAttempts(application_id, submission_attempts) {
-            console.log(`Updating ${application_id} submission attempts`)
-            try {
-                return await Application.update({
-                    submissionAttempts: submission_attempts
-                }, {
-                    where: {
-                        application_id: application_id
-                    }
-                });
-            } catch (error) {
-                console.error(`updateApplicationSubmissionAttempts: ${error}`);
-            }
-        }
-
-        async function updateApplicationAsSubmitted(application_id, response, submission_attempts) {
-            console.log(`Marking ${application_id} as submitted`)
-            try {
-                return await Application.update({
-                    submitted: 'submitted',
-                    application_reference: (response.data.contactId) ? response.data.contactId : response.data.applicationReference,
-                    case_reference: (response.data.caseId) ? response.data.caseId : response.data.caseReference,
-                    submissionAttempts: submission_attempts
-                }, {
-                    where: {
-                        application_id: application_id
-                    }
-                });
-            } catch (error) {
-                console.error(`updateApplicationAsSubmitted: ${error}`);
-            }
-        }
-
-        async function generateEAppObject(eAppData, eAppDocumentUrls) {
-            try {
-                return {
-                    legalisationApplication: {
-                        userId: 'legalisation',
-                        caseType: 'eApostille Service',
-                        timestamp: new Date().getTime().toString(),
-                        applicant: {
-                            forenames: eAppData.first_name.trim(),
-                            surname: eAppData.last_name.trim(),
-                            primaryTelephone: eAppData.telephone.trim(),
-                            mobileTelephone: eAppData.mobileNo || '',
-                            eveningTelephone: '',
-                            email: eAppData.email,
-                        },
-                        fields: {
-                            applicationReference: eAppData.unique_app_id,
-                            documentCount: eAppData.doc_count,
-                            paymentReference: eAppData.payment_reference,
-                            paymentGateway: 'GOV_PAY',
-                            paymentAmount: eAppData.payment_amount,
-                            customerInternalReference: eAppData.user_ref.trim(),
-                            feedbackConsent: eAppData.feedback_consent,
-                            companyName: eAppData.company_name,
-                            companyRegistrationNumber: '',
-                            portalCustomerId: eAppData.user_id,
-                            additionalInformation: '',
-                        },
-                        documents: await generateDocumentArray(eAppDocumentUrls),
-                    },
-                }
-            } catch (error) {
-                console.error(`generateEAppObject: ${error}`);
-            }
-        }
-
-        async function generateDocumentArray(eAppDocumentUrls) {
-            try {
-                return eAppDocumentUrls.map((document) => ({
-                    name: document.filename,
-                    downloadUrl: document.uploaded_url,
-                }));
-            } catch (error) {
-                console.error(`generateDocumentArray: ${error}`);
-            }
-        }
-
-        async function postToOrbit(applicationJsonObject, application_id, submission_attempts) {
-            try {
-                const edmsSubmissionApiUrl = config.edmsHost + '/api/v1/submitApplication';
-                const edmsBearerToken = await getEdmsAccessToken();
-
-                if (!edmsBearerToken) return
-
-                const response = await axios.post(edmsSubmissionApiUrl, applicationJsonObject, {
-                    headers: {
-                        'content-type': 'application/json',
-                        'Authorization': `Bearer ${edmsBearerToken}`
-                    },
-                });
-
-                if (response.status === 200) {
-                    await updateApplicationAsSubmitted(application_id, response, submission_attempts + 1)
-                    await logSubmissionAttempt(application_id, submission_attempts + 1, applicationJsonObject, 'submitted', response.status, response.data)
-                } else {
-                    await updateApplicationSubmissionAttempts(application_id, submission_attempts + 1)
-                    await logSubmissionAttempt(application_id, submission_attempts + 1, applicationJsonObject, 'failed', response.status, response.data)
-                }
-            } catch (error) {
-                console.error(`postToOrbit: ${error}`);
-            }
-        }
-
-        async function postToCasebook(applicationJsonObject, application_id, submission_attempts) {
-            const submissionApiUrl = config.submissionApiUrl;
-            const objectString = JSON.stringify(applicationJsonObject, null, 0);
-
-            const hash = crypto
-                .createHmac('sha512', config.hmacKey)
-                .update(Buffer.from(objectString, 'utf-8'))
-                .digest('hex')
-                .toUpperCase();
-
-            try {
-                const httpsAgent = new Agent({
-                    rejectUnauthorized: true,
-                    cert: config.certificatePath,
-                    key: config.keyPath
-                })
-                const response = await axios.post(submissionApiUrl, applicationJsonObject, {
-                    headers: {
-                        accept: 'application/json',
-                        hash,
-                        'content-type': 'application/json; charset=utf-8',
-                        'api-version': '4',
-                    },
-                    httpsAgent
-                });
-
-                if (response.status === 200) {
-
-                    await updateApplicationAsSubmitted(application_id, response, submission_attempts + 1)
-                    await logSubmissionAttempt(application_id, submission_attempts + 1, applicationJsonObject, 'submitted', response.status, response.data)
-                } else {
-                    await updateApplicationSubmissionAttempts(application_id, submission_attempts + 1)
-                    await logSubmissionAttempt(application_id, submission_attempts + 1, applicationJsonObject, 'failed', response.status, response.data)
-                }
-
-            } catch (error) {
-                console.error(`postToCasebook: ${error}`);
-            }
-        }
-
-        async function logSubmissionAttempt(application_id, retry_number, submitted_json, status, response_status_code, response_body){try {
-            return SubmissionAttempts.create({
-                application_id: application_id,
-                retry_number: retry_number || 0,
-                submitted_json: submitted_json,
-                status:  status,
-                response_status_code: response_status_code,
-                response_body: JSON.stringify(response_body)
-            })
-        } catch (error) {
-            console.error(`logSubmissionAttempt: ${error}`);
-        }}
+async function logSubmissionAttempt(application_id, retry_number, submitted_json, status, response_status_code, response_body){try {
+    return SubmissionAttempts.create({
+        application_id: application_id,
+        retry_number: retry_number || 0,
+        submitted_json: submitted_json,
+        status:  status,
+        response_status_code: response_status_code,
+        response_body: JSON.stringify(response_body)
+    })
+} catch (error) {
+    console.error(`logSubmissionAttempt: ${error}`);
+}}
 
 function trimWhitespace(input) {
     if (typeof input === "string") {
@@ -308,10 +333,6 @@ async function generateApplicationObject(results) {
     let altTelephone;
     let altMobileNo;
     let altEmail;
-
-    /**
-     * Address Mapping
-     */
 
     const casebookJSON = {
         main: {
@@ -528,5 +549,8 @@ async function generateApplicationObject(results) {
 
 
 module.exports = {
-    checkForApplications
+    checkForApplications,
+    checkForEligibleApplications,
+    updateApplicationAsProcessing,
+    placeBackInTheQueue
 };
