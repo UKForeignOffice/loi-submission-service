@@ -223,6 +223,9 @@ async function generateDocumentArray(eAppDocumentUrls) {
 }
 
 async function postToOrbit(applicationJsonObject, application_id, submission_attempts) {
+    const controller = new AbortController();
+    const signal = controller.signal;
+
     const edmsSubmissionApiUrl = config.edmsHost + '/api/v1/submitApplication';
     const edmsBearerToken = await getEdmsAccessToken();
     const this_submission_attempt = submission_attempts + 1
@@ -233,12 +236,14 @@ async function postToOrbit(applicationJsonObject, application_id, submission_att
                 'content-type': 'application/json',
                 'Authorization': `Bearer ${edmsBearerToken}`
             },
-            timeout: 5000
+            timeout: 5000,
+            signal
         });
         if (response && response.status === 200) {
             await updateApplicationAsSubmitted(application_id, response, this_submission_attempt)
             await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'submitted', response.status, response.data)
         } else {
+            controller.abort();
             await placeBackInTheQueue(application_id, this_submission_attempt)
             await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'failed', response.status, response.data)
             if (submission_attempts === maxRetryAttempts) {
@@ -246,6 +251,7 @@ async function postToOrbit(applicationJsonObject, application_id, submission_att
             }
         }
     } catch (error) {
+        controller.abort();
         console.error(`postToOrbit: ${error}`);
         await placeBackInTheQueue(application_id, this_submission_attempt)
         await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'failed', null, null)
@@ -256,6 +262,9 @@ async function postToOrbit(applicationJsonObject, application_id, submission_att
 }
 
 async function postToCasebook(applicationJsonObject, application_id, submission_attempts) {
+    const controller = new AbortController();
+    const signal = controller.signal;
+
     const submissionApiUrl = config.submissionApiUrl;
     const objectString = JSON.stringify(applicationJsonObject, null, 0);
     const this_submission_attempt = submission_attempts + 1
@@ -278,12 +287,14 @@ async function postToCasebook(applicationJsonObject, application_id, submission_
                 'api-version': '4',
             },
             httpsAgent,
-            timeout: 5000
+            timeout: 5000,
+            signal
         });
         if (response && response.status === 200) {
             await updateApplicationAsSubmitted(application_id, response, this_submission_attempt)
             await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'submitted', response.status, response.data)
         } else {
+            controller.abort();
             await placeBackInTheQueue(application_id, this_submission_attempt)
             await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'failed', response.status, response.data)
             if (submission_attempts === maxRetryAttempts) {
@@ -291,6 +302,7 @@ async function postToCasebook(applicationJsonObject, application_id, submission_
             }
         }
     } catch (error) {
+        controller.abort();
         console.error(`postToCasebook: ${error}`);
         await placeBackInTheQueue(application_id, this_submission_attempt)
         await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'failed', null, null)
