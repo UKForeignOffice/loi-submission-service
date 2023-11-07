@@ -228,35 +228,62 @@ async function postToOrbit(applicationJsonObject, application_id, submission_att
 
     const edmsSubmissionApiUrl = config.edmsHost + '/api/v1/submitApplication';
     const edmsBearerToken = await getEdmsAccessToken();
-    const this_submission_attempt = submission_attempts + 1
+    const this_submission_attempt = submission_attempts + 1;
+    const requestTimeout = 5000;
+    const startTime = new Date();
+
     try {
-        if (!edmsBearerToken) throw new Error('Error fetching access token')
-        const response = await axios.post(edmsSubmissionApiUrl, applicationJsonObject, {
-            headers: {
-                'content-type': 'application/json',
-                'Authorization': `Bearer ${edmsBearerToken}`
-            },
-            timeout: 5000,
-            signal
-        });
+        if (!edmsBearerToken) throw new Error('Error fetching access token');
+        const response = await axios.post(
+            edmsSubmissionApiUrl,
+            applicationJsonObject,
+            {
+                headers: {
+                    'content-type': 'application/json',
+                    Authorization: `Bearer ${edmsBearerToken}`,
+                },
+                timeout: requestTimeout,
+                signal,
+            }
+        );
+
+        const endTime = new Date();
+        const elapsedTime = endTime - startTime;
+
         if (response && response.status === 200) {
-            await updateApplicationAsSubmitted(application_id, response, this_submission_attempt)
-            await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'submitted', response.status, response.data)
+            console.log(`Orbit submit application request response time: ${elapsedTime}ms`);
+            await updateApplicationAsSubmitted(application_id, response, this_submission_attempt);
+            await logSubmissionAttempt(
+                application_id,
+                this_submission_attempt,
+                applicationJsonObject,
+                'submitted',
+                response.status,
+                response.data
+            );
         } else {
+            console.log(`Orbit submit application request response time: ${elapsedTime}ms`);
             controller.abort();
-            await placeBackInTheQueue(application_id, this_submission_attempt)
-            await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'failed', response.status, response.data)
+            await placeBackInTheQueue(application_id, this_submission_attempt);
+            await logSubmissionAttempt(
+                application_id,
+                this_submission_attempt,
+                applicationJsonObject,
+                'failed',
+                response.status,
+                response.data
+            );
             if (submission_attempts === maxRetryAttempts) {
-                await updateApplicationAsFailed(application_id)
+                await updateApplicationAsFailed(application_id);
             }
         }
     } catch (error) {
         controller.abort();
         console.error(`postToOrbit: ${error}`);
-        await placeBackInTheQueue(application_id, this_submission_attempt)
-        await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'failed', null, null)
+        await placeBackInTheQueue(application_id, this_submission_attempt);
+        await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'failed', null, null);
         if (this_submission_attempt === maxRetryAttempts) {
-            await updateApplicationAsFailed(application_id)
+            await updateApplicationAsFailed(application_id);
         }
     }
 }

@@ -150,39 +150,52 @@ var checkForAdditionalPayments = {
 
         async function submitToOrbit(additionalPayment, payload) {
             try {
-                let edmsAdditionalPaymentUrl = config.edmsHost + '/api/v1/paymentCapture'
-                let edmsBearerToken = await getEdmsAccessToken()
+                const edmsAdditionalPaymentUrl = config.edmsHost + '/api/v1/paymentCapture';
+                const edmsBearerToken = await getEdmsAccessToken();
+                const startTime = new Date();
 
-                return new Promise(function(resolve, reject) {
-                    request.post({
-                        headers: {
-                            'content-type': 'application/json',
-                            'Authorization': `Bearer ${edmsBearerToken}`
+                return new Promise(function (resolve, reject) {
+                    request.post(
+                        {
+                            headers: {
+                                'content-type': 'application/json',
+                                Authorization: `Bearer ${edmsBearerToken}`,
+                            },
+                            url: edmsAdditionalPaymentUrl,
+                            json: true,
+                            body: payload,
                         },
-                        url: edmsAdditionalPaymentUrl,
-                        json: true,
-                        body: payload
-                    }, function (error, response, body) {
-                        try {
-                            if (error) {
-                                console.log(`Error submitting to ORBIT: ${error}`);
-                                resolve(response.statusCode)
-                            } else if (response.statusCode === 200) {
-                                console.log(`Application ${additionalPayment.application_id} has been submitted to ORBIT successfully`);
-                                resolve(response.statusCode)
-                            } else {
-                                console.log(`Error processing ORBIT application ${additionalPayment.application_id} error: ${error} return status: ${response.statusCode}`);
-                                resolve(response.statusCode)
-                            }
-                        } catch (error) {
-                            console.log(error)
-                            reject(error)
-                        }
-                    })
-                })
+                        function (error, response, body) {
+                            try {
+                                const endTime = new Date();
+                                const elapsedTime = endTime - startTime;
 
+                                if (error) {
+                                    console.log(`Error submitting to ORBIT: ${error}`);
+                                    console.log(`Response Time: ${elapsedTime}ms`); // Log the response time
+                                    resolve(response.statusCode);
+                                } else if (response.statusCode === 200) {
+                                    console.log(
+                                        `Application ${additionalPayment.application_id} has been submitted to ORBIT successfully`
+                                    );
+                                    console.log(`Orbit payment capture request response time: ${elapsedTime}ms`);
+                                    resolve(response.statusCode);
+                                } else {
+                                    console.log(
+                                        `Error processing ORBIT application ${additionalPayment.application_id} error: ${error} return status: ${response.statusCode}`
+                                    );
+                                    console.log(`Orbit payment capture request response time: ${elapsedTime}ms`);
+                                    resolve(response.statusCode);
+                                }
+                            } catch (error) {
+                                console.log(error);
+                                reject(error);
+                            }
+                        }
+                    );
+                });
             } catch (error) {
-                console.log(error)
+                console.log(error);
             }
         }
 
