@@ -1,4 +1,5 @@
 var request = require('request');
+const axios = require('axios');
 var crypto = require('crypto');
 var config = require('../config/config');
 var ExportedApplicationData = require('../models/index').ExportedApplicationData
@@ -200,81 +201,79 @@ function generateDocumentArray(documentData) {
 }
 
 function processPaperApplicationForOrbit(appId, callback) {
-    try {
+  try {
+    let applicationJsonObject = {};
+    console.log(`Processing paper app ${appId}`);
 
-        var applicationJsonObject = {};
-        console.log(`Processing paper app ${appId}`);
+    ExportedApplicationData.findOne({
+      attributes: [
+        "application_id", "applicationType", "first_name", "last_name", "telephone", "mobileNo", "email",
+        "doc_count", "special_instructions", "user_ref", "payment_reference", "payment_amount", "postage_return_title",
+        "postage_return_price", "postage_send_title", "postage_send_price", "main_house_name", "main_street",
+        "main_town", "main_county", "main_country", "main_full_name", "main_postcode", "main_telephone", "main_mobileNo",
+        "main_email", "alt_house_name", "alt_street", "alt_town", "alt_county", "alt_country", "alt_full_name",
+        "alt_postcode", "alt_telephone", "alt_mobileNo", "alt_email", "feedback_consent", "total_docs_count_price",
+        "unique_app_id", "user_id", "company_name", "main_organisation", "alt_organisation"
+      ],
+      where: {
+        application_id: appId
+      }
+    }).then(async function (results) {
+      if (!(results && results.dataValues)) {
+        console.log(`Cannot find ExportedApplicationData record for application_id ${appId}. Removing from queue.`);
+        callback(true);
+        return null;
+      }
 
-        ExportedApplicationData.findOne({
-            attributes: ["application_id", "applicationType", "first_name", "last_name", "telephone", "mobileNo", "email", "doc_count", "special_instructions", "user_ref", "payment_reference", "payment_amount", "postage_return_title", "postage_return_price", "postage_send_title", "postage_send_price", "main_house_name", "main_street", "main_town", "main_county", "main_country", "main_full_name", "main_postcode", "main_telephone", "main_mobileNo", "main_email", "alt_house_name", "alt_street", "alt_town", "alt_county", "alt_country",
-                "alt_full_name", "alt_postcode", "alt_telephone","alt_mobileNo", "alt_email", "feedback_consent", "total_docs_count_price", "unique_app_id", "user_id", "company_name", "main_organisation", "alt_organisation"],
-            where: {
+      applicationJsonObject = getApplicationObject(results.dataValues);
+
+      const edmsSubmissionApiUrl = `${config.edmsHost}/api/v1/submitApplication`;
+      const edmsBearerToken = await getEdmsAccessToken();
+
+      axios.post(edmsSubmissionApiUrl, applicationJsonObject, {
+        headers: {
+          'content-type': 'application/json',
+          'Authorization': `Bearer ${edmsBearerToken}`
+        },
+        json: true,
+      }).then(function (response) {
+        if (response.status === 200) {
+          console.log(`Application ${appId} has been submitted to ORBIT successfully`);
+
+          Application.update(
+            {
+              submitted: 'submitted',
+              application_reference: response.data.ContactId,
+              case_reference: response.data.CaseId
+            },
+            {
+              where: {
                 application_id: appId
+              }
             }
-        }).then(async function (results) {
-            if (!(results && results.dataValues)) {
-                console.log(`Cannot find ExportedApplicationData record for application_id ${appId}. Removing from queue.`);
-                callback(true);
-                return null;
+          ).then(function (results) {
+            if (results && results[0] === 1) {
+              callback(true, applicationJsonObject, response.status, response.data);
+            } else {
+              console.log(`Application ID ${appId} not found in the database`);
+              callback(false, applicationJsonObject, response.status, response.data);
             }
-
-            applicationJsonObject = getApplicationObject(results.dataValues);
-
-            var edmsSubmissionApiUrl = config.edmsHost + '/api/v1/submitApplication'
-            var edmsBearerToken = await getEdmsAccessToken()
-
-            request.post({
-                    headers: {
-                        'content-type': 'application/json',
-                        'Authorization': `Bearer ${edmsBearerToken}`
-                    },
-                    url: edmsSubmissionApiUrl,
-                    json: true,
-                    body: applicationJsonObject
-                }, function (error, response, body) {
-                    if (error) {
-                        console.log(`Error submitting to orbit: ${error}`);
-                        callback(false, applicationJsonObject, (response ? response.statusCode : ''), (body || ''));
-                    } else if (response && response.statusCode === 200) { // Successful submit response code
-                        console.log(`Application ${appId} has been submitted to ORBIT successfully`);
-
-                        /*
-                         * Update the application table for submit status, case reference and app reference
-                         * (both received as a response from submission api)
-                         */
-                        Application.update(
-                            {
-                                submitted: 'submitted',
-                                application_reference: body.ContactId,
-                                case_reference: body.CaseId
-                            }, {
-                                where: {
-                                    application_id: appId
-                                }
-                            }
-                        ).then(function (results) {
-                            if (results && results[0] === 1) {
-                                //all finished processing - acknowledge the message from the queue so it can be removed
-                                callback(true, applicationJsonObject, response.statusCode, body);
-                            } else {
-                                console.log(`Application ID ${appId} not found in the database`);
-                                callback(false, applicationJsonObject, response.statusCode, body);
-                            }
-                        }).catch(function (error) {
-                            console.error(JSON.stringify(error));
-                            callback(false, applicationJsonObject, response.statusCode, body);
-                        });
-                    } else {
-                        console.error('ERROR', response.statusCode, body);
-                        callback(false, applicationJsonObject, response.statusCode, body);
-                    }
-                }
-            );
-        });
-
-    } catch (error) {
-        console.log(`processPaperApplicationForOrbit: ${error}`)
-    }
+          }).catch(function (error) {
+            console.error(JSON.stringify(error));
+            callback(false, applicationJsonObject, response.status, response.data);
+          });
+        } else {
+          console.error('ERROR', response.status, response.data);
+          callback(false, applicationJsonObject, response.status, response.data);
+        }
+      }).catch(function (error) {
+        console.log(`Error submitting to ORBIT: ${error}`);
+        callback(false, applicationJsonObject, error.response ? error.response.status : '', error.response ? error.response.data : '');
+      });
+    });
+  } catch (error) {
+    console.log(`processPaperApplicationForOrbit: ${error}`);
+  }
 }
 
 function processPaperApplication(appId, callback) {
@@ -727,94 +726,53 @@ function postToCasebook(applicationJsonObject, appId, callback) {
 }
 
 async function postToOrbit(applicationJsonObject, appId, callback) {
-    try {
+  try {
+    const edmsSubmissionApiUrl = `${config.edmsHost}/api/v1/submitApplication`;
+    const edmsBearerToken = await getEdmsAccessToken();
 
-        var edmsSubmissionApiUrl = config.edmsHost + '/api/v1/submitApplication'
-        var edmsBearerToken = await getEdmsAccessToken()
+    const response = await axios.post(edmsSubmissionApiUrl, applicationJsonObject, {
+      headers: {
+        'content-type': 'application/json',
+        'Authorization': `Bearer ${edmsBearerToken}`,
+      },
+      json: true,
+    });
 
-        request.post(
-            {
-                headers: {
-                    'content-type': 'application/json',
-                    'Authorization': `Bearer ${edmsBearerToken}`
-                },
-                url: edmsSubmissionApiUrl,
-                json: true,
-                body: applicationJsonObject
-            },
-            function (error, response, body) {
-                if (error) {
-                    console.log(`Error submitting to ORBIT: ${error}`);
-                    callback(
-                        false,
-                        applicationJsonObject,
-                        response ? response.statusCode : '',
-                        body || ''
-                    );
-                } else if (response.statusCode === 200) {
-                    // Successful submit response code
-                    console.log(`Application ${appId} has been submitted to ORBIT successfully`);
+    if (response.status === 200) {
+      console.log(`Application ${appId} has been submitted to ORBIT successfully`);
 
-                    /*
-                     * Update the application table for submit status, case reference and app reference
-                     * (both received as a response from submission api)
-                     */
-                    Application.update(
-                        {
-                            submitted: 'submitted',
-                            application_reference: body.ContactId,
-                            case_reference: body.CaseId
-                        },
-                        {
-                            where: {
-                                application_id: appId,
-                            },
-                        }
-                    )
-                        .then(function (results) {
-                            if (results && results[0] === 1) {
-                                //all finished processing - acknowledge the message from the queue so it can be removed
-                                callback(
-                                    true,
-                                    applicationJsonObject,
-                                    response.statusCode,
-                                    body
-                                );
-                            } else {
-                                console.log(`Application ID ${appId} not found in the database`);
-                                callback(
-                                    false,
-                                    applicationJsonObject,
-                                    response.statusCode,
-                                    body
-                                );
-                            }
-                        })
-                        .catch(function (error) {
-                            console.error(JSON.stringify(error));
-                            callback(
-                                false,
-                                applicationJsonObject,
-                                response.statusCode,
-                                body
-                            );
-                        });
-                } else {
-                    console.error('error: ' + response.statusCode);
-                    console.error(body);
-                    callback(
-                        false,
-                        applicationJsonObject,
-                        response.statusCode,
-                        body
-                    );
-                }
-            }
-        );
-
-    } catch (error) {
-        console.error(`postToOrbit: ${error}`)
+      Application.update(
+        {
+          submitted: 'submitted',
+          application_reference: response.data.ContactId,
+          case_reference: response.data.CaseId,
+        },
+        {
+          where: {
+            application_id: appId,
+          },
+        }
+      )
+        .then(function (results) {
+          if (results && results[0] === 1) {
+            callback(true, applicationJsonObject, response.status, response.data);
+          } else {
+            console.log(`Application ID ${appId} not found in the database`);
+            callback(false, applicationJsonObject, response.status, response.data);
+          }
+        })
+        .catch(function (error) {
+          console.error(JSON.stringify(error));
+          callback(false, applicationJsonObject, response.status, response.data);
+        });
+    } else {
+      console.error('error: ' + response.status);
+      console.error(response.data);
+      callback(false, applicationJsonObject, response.status, response.data);
     }
+  } catch (error) {
+    console.error(`postToOrbit: ${error}`);
+  }
 }
 
 module.exports = {

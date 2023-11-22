@@ -1,4 +1,5 @@
 var request = require('request');
+const axios = require('axios');
 var crypto = require('crypto');
 var config = require('../config/config');
 var AdditionalPaymentDetails = require('../models/index').AdditionalPaymentDetails
@@ -149,41 +150,42 @@ var checkForAdditionalPayments = {
         }
 
         async function submitToOrbit(additionalPayment, payload) {
-            try {
-                let edmsAdditionalPaymentUrl = config.edmsHost + '/api/v1/paymentCapture'
-                let edmsBearerToken = await getEdmsAccessToken()
+          try {
+            const edmsAdditionalPaymentUrl = `${config.edmsHost}/api/v1/paymentCapture`;
+            const edmsBearerToken = await getEdmsAccessToken();
 
-                return new Promise(function(resolve, reject) {
-                    request.post({
-                        headers: {
-                            'content-type': 'application/json',
-                            'Authorization': `Bearer ${edmsBearerToken}`
-                        },
-                        url: edmsAdditionalPaymentUrl,
-                        json: true,
-                        body: payload
-                    }, function (error, response, body) {
-                        try {
-                            if (error) {
-                                console.log(`Error submitting to ORBIT: ${error}`);
-                                resolve(response.statusCode)
-                            } else if (response.statusCode === 200) {
-                                console.log(`Application ${additionalPayment.application_id} has been submitted to ORBIT successfully`);
-                                resolve(response.statusCode)
-                            } else {
-                                console.log(`Error processing ORBIT application ${additionalPayment.application_id} error: ${error} return status: ${response.statusCode}`);
-                                resolve(response.statusCode)
-                            }
-                        } catch (error) {
-                            console.log(error)
-                            reject(error)
-                        }
-                    })
+            return new Promise(function (resolve, reject) {
+              axios
+                .post(
+                  edmsAdditionalPaymentUrl,
+                  payload,
+                  {
+                    headers: {
+                      'content-type': 'application/json',
+                      'Authorization': `Bearer ${edmsBearerToken}`,
+                    },
+                    json: true,
+                  }
+                )
+                .then(function (response) {
+                  try {
+                    if (response.status !== 200) {
+                      console.log(`Error processing ORBIT application ${additionalPayment.application_id} error: ${response.data} return status: ${response.status}`);
+                    }
+                    resolve(response.status);
+                  } catch (error) {
+                    console.log(error);
+                    reject(error);
+                  }
                 })
-
-            } catch (error) {
-                console.log(error)
-            }
+                .catch(function (error) {
+                  console.log(`Error submitting to ORBIT: ${error}`);
+                  resolve(error.response.status);
+                });
+            });
+          } catch (error) {
+            console.log(error);
+          }
         }
 
         async function markPaymentAsSubmitted(additionalPayment, responseStatusCode) {
