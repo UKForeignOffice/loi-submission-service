@@ -1,4 +1,4 @@
-var request = require('request');
+var axios = require('axios');
 var crypto = require('crypto');
 var config = require('../config/config');
 var AdditionalPaymentDetails = require('../models/index').AdditionalPaymentDetails
@@ -7,6 +7,7 @@ var moment = require('moment');
 var maxRetryAttempts = config.maxRetryAttempts;
 const { Op } = require("sequelize");
 const {getEdmsAccessToken} = require("../services/HelperService");
+const {Agent} = require("https");
 
 var checkForAdditionalPayments = {
     checkForAdditionalPayments: async function() {
@@ -19,7 +20,7 @@ var checkForAdditionalPayments = {
                 await processMessage(results.dataValues, submissionDestination.dataValues.submission_destination)
             }
         } catch (error) {
-            console.log(error)
+            console.error(error)
         }
 
         async function checkForEligibleAdditionalPayments() {
@@ -33,7 +34,7 @@ var checkForAdditionalPayments = {
                     }
                 })
             } catch (error) {
-                console.log(error)
+                console.error(error)
             }
         }
 
@@ -46,7 +47,7 @@ var checkForAdditionalPayments = {
                     }
                 })
             } catch (error) {
-                console.log(error)
+                console.error(error)
             }
         }
 
@@ -82,7 +83,7 @@ var checkForAdditionalPayments = {
                     }
                 }
             } catch (error) {
-                console.log(error)
+                console.error(error)
             }
         }
 
@@ -99,103 +100,90 @@ var checkForAdditionalPayments = {
                     }
                 }
             } catch (error) {
-                console.log(error)
+                console.error(error)
             }
         }
 
         async function submitToCasebook(additionalPayment, payload) {
-            try {
-                let additionalPaymentApiUrl = config.additionalPaymentApiUrl;
-                let objectString = JSON.stringify(payload, null, 0);
-                let hash = crypto.createHmac('sha512', config.hmacKey).update(new Buffer.from(objectString, 'utf-8')).digest('hex').toUpperCase();
+            const controller = new AbortController();
 
-                return new Promise(function(resolve, reject) {
-                    request.post({
-                        headers: {
-                            "accept": "application/json",
-                            "hash": hash,
-                            "content-type": "application/json; charset=utf-8",
-                            "api-version": "4"
-                        },
-                        url: additionalPaymentApiUrl,
-                        agentOptions: config.certificatePath ? {
-                            cert: config.certificatePath,
-                            key: config.keyPath
-                        } : null,
-                        json: true,
-                        body: payload
-                    }, function (error, response, body) {
-                        try {
-                            if (error) {
-                                console.log(`Error submitting to casebook: ${error}`);
-                                resolve(response.statusCode)
-                            } else if (response.statusCode === 200) {
-                                console.log(`Application ${additionalPayment.application_id} has been submitted successfully`);
-                                resolve(response.statusCode)
-                            } else {
-                                console.log(`Error processing application ${additionalPayment.application_id} error: ${error} return status: ${response.statusCode}`);
-                                resolve(response.statusCode)
-                            }
-                        } catch (error) {
-                            console.log(error)
-                            reject(error)
-                        }
-                    })
+            try {
+                const signal = controller.signal;
+                const additionalPaymentApiUrl = config.additionalPaymentApiUrl;
+                const objectString = JSON.stringify(payload);
+                const hash = crypto.createHmac('sha512', config.hmacKey).update(Buffer.from(objectString, 'utf-8')).digest('hex').toUpperCase();
+
+                const httpsAgent = new Agent({
+                    rejectUnauthorized: true,
+                    cert: config.certificatePath,
+                    key: config.keyPath
                 })
 
+                const response = await axios.post(additionalPaymentApiUrl, payload, {
+                    headers: {
+                        "accept": "application/json",
+                        "hash": hash,
+                        "content-type": "application/json; charset=utf-8",
+                        "api-version": "4"
+                    },
+                    httpsAgent,
+                    timeout: 5000,
+                    signal
+                });
+
+                if (response && response.status === 200) {
+                    console.log(`Additional payment for ${additionalPayment.application_id} has been submitted successfully`);
+                    return response.status;
+                } else {
+                    console.error(`Failed to submit additional payment for ${additionalPayment.application_id}. Status code: ${response.status || 500}`);
+                    controller.abort();
+                    return response.status ? response.status : 500;
+                }
+
+
             } catch (error) {
-                console.log(error)
+                controller.abort();
+                console.error(`Error submitting additional payment to casebook: ${error}`);
+                return error.response ? error.response.status : 500;
             }
         }
 
         async function submitToOrbit(additionalPayment, payload) {
+            const controller = new AbortController();
+
             try {
+                const signal = controller.signal;
                 const edmsAdditionalPaymentUrl = config.edmsHost + '/api/v1/paymentCapture';
                 const edmsBearerToken = await getEdmsAccessToken();
                 const startTime = new Date();
 
-                return new Promise(function (resolve, reject) {
-                    request.post(
-                        {
-                            headers: {
-                                'content-type': 'application/json',
-                                Authorization: `Bearer ${edmsBearerToken}`,
-                            },
-                            url: edmsAdditionalPaymentUrl,
-                            json: true,
-                            body: payload,
-                        },
-                        function (error, response, body) {
-                            try {
-                                const endTime = new Date();
-                                const elapsedTime = endTime - startTime;
-
-                                if (error) {
-                                    console.log(`Error submitting to ORBIT: ${error}`);
-                                    console.log(`Response Time: ${elapsedTime}ms`); // Log the response time
-                                    resolve(response.statusCode);
-                                } else if (response.statusCode === 200) {
-                                    console.log(
-                                        `Application ${additionalPayment.application_id} has been submitted to ORBIT successfully`
-                                    );
-                                    console.log(`Orbit payment capture request response time: ${elapsedTime}ms`);
-                                    resolve(response.statusCode);
-                                } else {
-                                    console.log(
-                                        `Error processing ORBIT application ${additionalPayment.application_id} error: ${error} return status: ${response.statusCode}`
-                                    );
-                                    console.log(`Orbit payment capture request response time: ${elapsedTime}ms`);
-                                    resolve(response.statusCode);
-                                }
-                            } catch (error) {
-                                console.log(error);
-                                reject(error);
-                            }
-                        }
-                    );
+                const response = await axios.post(edmsAdditionalPaymentUrl, payload, {
+                    headers: {
+                        'content-type': 'application/json',
+                        Authorization: `Bearer ${edmsBearerToken}`,
+                    },
+                    timeout: 5000,
+                    signal
                 });
+
+                const endTime = new Date();
+                const elapsedTime = endTime - startTime;
+
+                if (response && response.status === 200) {
+                    console.log(
+                        `Additional payment for ${additionalPayment.application_id} has been submitted to ORBIT successfully`
+                    );
+                    console.log(`Orbit payment capture request response time: ${elapsedTime}ms`);
+                    return response.status;
+                } else {
+                    console.error(`Failed to submit additional payment for ${additionalPayment.application_id}. Status code: ${response.status || 500}`);
+                    controller.abort();
+                    return response.status ? response.status : 500;
+                }
+
             } catch (error) {
-                console.log(error);
+                console.error(`Error submitting additional payment to ORBIT: ${error}`);
+                return error.response ? error.response.status : 500;
             }
         }
 
@@ -212,7 +200,7 @@ var checkForAdditionalPayments = {
                     }
                 })
             } catch (error) {
-                console.log(error)
+                console.error(error)
             }
         }
 
@@ -225,7 +213,7 @@ var checkForAdditionalPayments = {
                     }
                 })
             } catch (error) {
-                console.log(error)
+                console.error(error)
             }
         }
 
@@ -242,7 +230,7 @@ var checkForAdditionalPayments = {
                     }
                 })
             } catch (error) {
-                console.log(error)
+                console.error(error)
             }
         }
 
@@ -258,7 +246,7 @@ var checkForAdditionalPayments = {
                     }
                 })
             } catch (error) {
-                console.log(error)
+                console.error(error)
             }
         }
     }
