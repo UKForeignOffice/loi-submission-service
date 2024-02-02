@@ -107,7 +107,7 @@ var checkForAdditionalPayments = {
             try {
                 let additionalPaymentApiUrl = config.additionalPaymentApiUrl;
                 let objectString = JSON.stringify(payload, null, 0);
-                let hash = crypto.createHmac('sha512', config.hmacKey).update(new Buffer(objectString, 'utf-8')).digest('hex').toUpperCase();
+                let hash = crypto.createHmac('sha512', config.hmacKey).update(new Buffer.from(objectString, 'utf-8')).digest('hex').toUpperCase();
 
                 return new Promise(function(resolve, reject) {
                     request.post({
