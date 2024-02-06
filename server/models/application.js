@@ -19,7 +19,13 @@ module.exports = function(sequelize, DataTypes) {
             },
             submissionAttempts: {
                 type: DataTypes.INTEGER()
-            }
+            },
+            submission_destination: {
+                type: DataTypes.STRING()
+            },
+            application_reference: {
+                type: DataTypes.STRING()
+            },
         },
         {tableName: 'Application'}
     );

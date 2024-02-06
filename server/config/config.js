@@ -1,27 +1,32 @@
+var Sequelize = require('sequelize');
 require('dotenv').config();
 
-// var rabbitMq = JSON.parse(env.RABBITMQ);
-var dbConn = process.env.DBCONN;
-var submissionApiUrl = process.env.SUBMISSIONAPIURL;
 var additionalPaymentApiUrl = process.env.ADDITIONALPAYMENTAPIURL;
-var certificatePath = process.env.NODE_ENV !== 'development' ? process.env.CASEBOOKCERTIFICATE : process.env.CASEBOOKCERTIFICATE.replace(/\\n/gm, '\n');
-var keyPath = process.env.NODE_ENV !== 'development' ? process.env.CASEBOOKKEY : process.env.CASEBOOKKEY.replace(/\\n/gm, '\n');
+var certificatePath = process.env.NODE_ENV === 'development' ? process.env.CASEBOOKCERTIFICATE.replace(/\\n/gm, '\n') : process.env.CASEBOOKCERTIFICATE;
+var dbConn = process.env.DBCONN;
+var edmsAuthHost = process.env.EDMS_AUTH_HOST;
+var edmsAuthScope = process.env.EDMS_AUTH_SCOPE;
+var edmsBearerToken = JSON.parse(process.env.EDMS_BEARER_TOKEN);
+var edmsHost = process.env.EDMS_HOST;
 var hmacKey = process.env.HMACKEY;
+var keyPath = process.env.NODE_ENV === 'development' ? process.env.CASEBOOKKEY.replace(/\\n/gm, '\n') : process.env.CASEBOOKKEY;
 var maxRetryAttempts = process.env.MAXRETRYATTEMPTS
 var pollInterval = process.env.POLLINTERVAL
-
-var Sequelize = require('sequelize');
+var submissionApiUrl = process.env.SUBMISSIONAPIURL;
 
 var config = {
-    // "rabbitMQ": {url: rabbitMq.url, queueName: rabbitMq.queueName, exchangeName: rabbitMq.exchangeName, retryQueue: rabbitMq.retryQueue, retryExchange: rabbitMq.retryExchange, retryDelay: rabbitMq.retryDelay, maxRetryAttempts: rabbitMq.maxRetryAttempts },
+    "additionalPaymentApiUrl": additionalPaymentApiUrl,
+    "certificatePath": certificatePath,
+    "db": dbConn,
+    "edmsBearerToken": edmsBearerToken,
+    "edmsHost": edmsHost,
+    edmsAuthHost,
+    edmsAuthScope,
+    "hmacKey": hmacKey,
+    "keyPath": keyPath,
     "maxRetryAttempts": maxRetryAttempts,
     "pollInterval": pollInterval,
-    'db': dbConn,
-    'submissionApiUrl': submissionApiUrl,
-    'additionalPaymentApiUrl': additionalPaymentApiUrl,
-    'certificatePath': certificatePath,
-    'keyPath': keyPath,
-    'hmacKey': hmacKey
+    "submissionApiUrl": submissionApiUrl,
 };
 
 module.exports = config;

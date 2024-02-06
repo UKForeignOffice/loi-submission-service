@@ -5,11 +5,16 @@ const commonConfig = require('../config/config.js');
 
 // database options
 const opts = {
-    logging: false,
     define: {
         //prevent sequelize from pluralizing table names
         freezeTableName: true
-    }
+    },
+    retry: {
+        base: 1000,
+        multiplier: 2,
+        max: 5000,
+    },
+    logging: false
 };
 
 // initialise Sequelize

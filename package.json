@@ -2,6 +2,7 @@
   "name": "submissionAPI",
   "version": "0.1.0",
   "dependencies": {
+    "axios": "^1.4.0",
     "body-parser": "^1.19.1",
     "chai": "^4.3.8",
     "dotenv": "^16.3.1",
@@ -10,6 +11,7 @@
     "mocha": "^10.2.0",
     "mocha-junit-reporter": "^2.2.1",
     "moment": "^2.29.1",
+    "node-cache": "^5.1.2",
     "pg": "^8.11.3",
     "pg-hstore": "^2.3.4",
     "request": "^2.88.2",
@@ -21,5 +23,12 @@
     "start": "node ./server/bin/www",
     "test": "NODE_ENV=test PORT=6000 node node_modules/mocha/bin/_mocha 'test/**/*.js' --recursive",
     "test-report": "npx mocha --recursive test/ --reporter mocha-junit-reporter"
+  },
+  "devDependencies": {
+    "chai": "^4.3.7",
+    "mocha": "^10.2.0",
+    "mocha-junit-reporter": "^2.2.0",
+    "sinon": "^15.2.0",
+    "sinon-chai": "^3.7.0"
   }
 }
