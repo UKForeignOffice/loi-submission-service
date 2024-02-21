@@ -30,6 +30,9 @@ var checkForAdditionalPayments = {
                         submitted: 'queued',
                         submission_attempts: {
                             [Op.lte]: maxRetryAttempts
+                        },
+                        submission_destination: {
+                            [Op.or]: [null, 'CASEBOOK', 'ORBIT']
                         }
                     }
                 })
