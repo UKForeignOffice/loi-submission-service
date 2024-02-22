@@ -1,13 +1,14 @@
-var axios = require('axios');
-var crypto = require('crypto');
-var config = require('../config/config');
-var AdditionalPaymentDetails = require('../models/index').AdditionalPaymentDetails
-var Application = require('../models/index').Application
-var moment = require('moment');
-var maxRetryAttempts = config.maxRetryAttempts;
+const axios = require('axios');
+const crypto = require('crypto');
+const config = require('../config/config');
+const AdditionalPaymentDetails = require('../models/index').AdditionalPaymentDetails
+const Application = require('../models/index').Application
+const moment = require('moment');
+const maxRetryAttempts = config.maxRetryAttempts;
 const { Op } = require("sequelize");
 const {getEdmsAccessToken} = require("../services/HelperService");
 const {Agent} = require("https");
+const {sequelize} = require("../models");
 
 var checkForAdditionalPayments = {
     checkForAdditionalPayments: async function() {
@@ -15,10 +16,18 @@ var checkForAdditionalPayments = {
 
             let results = await checkForEligibleAdditionalPayments()
 
-            if (results){
-                let submissionDestination = await getSubmissionDestination(results.dataValues.application_id)
-                await processMessage(results.dataValues, submissionDestination.dataValues.submission_destination)
+            if (results) {
+                const { application_id } = results.dataValues;
+                const submissionDestination = await getSubmissionDestination(application_id);
+
+                if (submissionDestination) {
+                    const { submission_destination } = submissionDestination.dataValues;
+                    await processMessage(results.dataValues, submission_destination);
+                } else {
+                    await updateAdditionalPaymentStatusToDraft(application_id);
+                }
             }
+
         } catch (error) {
             console.error(error)
         }
@@ -31,9 +40,22 @@ var checkForAdditionalPayments = {
                         submission_attempts: {
                             [Op.lte]: maxRetryAttempts
                         },
-                        submission_destination: {
-                            [Op.or]: [null, 'CASEBOOK', 'ORBIT']
-                        }
+                    },
+                    order: sequelize.random(),
+                })
+            } catch (error) {
+                console.error(error)
+            }
+        }
+
+        async function updateAdditionalPaymentStatusToDraft(application_id) {
+            try {
+                return await AdditionalPaymentDetails.update({
+                    submitted: 'draft',
+                    updated_at: moment().format('DD MMMM YYYY, h:mm:ss A')
+                }, {
+                    where: {
+                        application_id: application_id
                     }
                 })
             } catch (error) {
