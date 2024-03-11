@@ -187,7 +187,7 @@ var checkForAdditionalPayments = {
                         'content-type': 'application/json',
                         Authorization: `Bearer ${edmsBearerToken}`,
                     },
-                    timeout: 5000,
+                    timeout: 9000,
                     signal
                 });
 
