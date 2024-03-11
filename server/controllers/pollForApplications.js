@@ -229,7 +229,6 @@ async function postToOrbit(applicationJsonObject, application_id, submission_att
     const edmsSubmissionApiUrl = config.edmsHost + '/api/v1/submitApplication';
     const edmsBearerToken = await getEdmsAccessToken();
     const this_submission_attempt = submission_attempts + 1;
-    const requestTimeout = 5000;
     const startTime = new Date();
 
     try {
@@ -242,7 +241,7 @@ async function postToOrbit(applicationJsonObject, application_id, submission_att
                     'content-type': 'application/json',
                     Authorization: `Bearer ${edmsBearerToken}`,
                 },
-                timeout: requestTimeout,
+                timeout: 9000,
                 signal,
             }
         );
