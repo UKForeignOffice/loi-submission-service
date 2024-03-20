@@ -186,7 +186,7 @@ async function generateEAppObject(eAppData, eAppDocumentUrls) {
                     forenames: eAppData.first_name?.trim(),
                     surname: eAppData.last_name?.trim(),
                     primaryTelephone: eAppData.telephone?.trim(),
-                    mobileTelephone: eAppData.mobileNo || '',
+                    mobileTelephone: eAppData.mobileNo?.trim() || eAppData.telephone?.trim(),
                     eveningTelephone: '',
                     email: eAppData.email,
                 },
@@ -494,7 +494,7 @@ async function generateApplicationObject(results) {
                     forenames: trimWhitespace(results.first_name),
                     surname: trimWhitespace(results.last_name),
                     primaryTelephone: trimWhitespace(results.telephone),
-                    mobileTelephone: trimWhitespace(results.mobileNo),
+                    mobileTelephone: trimWhitespace(results.mobileNo) || trimWhitespace(results.telephone),
                     eveningTelephone: "",
                     email: trimWhitespace(results.email)
                 },
@@ -525,7 +525,7 @@ async function generateApplicationObject(results) {
                             country: trimWhitespace(results.main_country || 'United Kingdom')
                         },
                         telephone: trimWhitespace(results.main_telephone || ""),
-                        mobileNo: trimWhitespace(results.main_mobileNo || ""),
+                        mobileNo: trimWhitespace(results.main_mobileNo || results.main_telephone),
                         email: trimWhitespace(results.main_email || "")
                     },
                     unsuccessfulReturnDetails: {
@@ -543,7 +543,7 @@ async function generateApplicationObject(results) {
                             country: trimWhitespace(altCountry || 'United Kingdom')
                         },
                         telephone: trimWhitespace(altTelephone || ""),
-                        mobileNo: trimWhitespace(altMobileNo || ""),
+                        mobileNo: trimWhitespace(altMobileNo || altTelephone),
                         email: trimWhitespace(altEmail || "")
                     },
                     additionalInformation: ""
@@ -560,7 +560,7 @@ async function generateApplicationObject(results) {
                     forenames: trimWhitespace(results.first_name),
                     surname: trimWhitespace(results.last_name),
                     primaryTelephone: trimWhitespace(results.telephone),
-                    mobileTelephone: trimWhitespace(results.mobileNo),
+                    mobileTelephone: trimWhitespace(results.mobileNo) || trimWhitespace(results.telephone),
                     eveningTelephone: "",
                     email: trimWhitespace(results.email)
                 },
