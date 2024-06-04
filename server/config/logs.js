@@ -8,7 +8,7 @@ const logger = createLogger({
             format: combine(
                 timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
                 printf(({ level, message, timestamp, ...rest }) => {
-                    return `[${timestamp}] ${level.toUpperCase()}: ${message}`;
+                    return `${level.toUpperCase()}: ${message}`;
                 }),
             ),
         }),
@@ -17,7 +17,7 @@ const logger = createLogger({
             format: combine(
                 timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
                 printf(({ level, message, timestamp, ...rest }) => {
-                    return `[${timestamp}] ${level.toUpperCase()}: ${message}`;
+                    return `${level.toUpperCase()}: ${message}`;
                 }),
             ),
         }),
