@@ -14,7 +14,6 @@
     "node-cache": "^5.1.2",
     "pg": "^8.11.5",
     "pg-hstore": "^2.3.4",
-    "request": "^2.88.2",
     "sequelize": "^6.37.3",
     "sinon": "^15.2.0",
     "winston": "^3.13.0"

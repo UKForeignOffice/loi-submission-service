@@ -1,4 +1,3 @@
-const crypto = require('crypto');
 const axios = require('axios');
 const config = require('../config/config');
 const ExportedApplicationData = require('../models/index').ExportedApplicationData
@@ -16,8 +15,8 @@ async function checkForApplications() {
     try {
         const results = await checkForEligibleApplications();
         if (results) {
-            const {application_id, submissionAttempts, serviceType, submission_destination} = results;
-            await processApplication(application_id, submissionAttempts, serviceType, submission_destination);
+            const {application_id, submissionAttempts, serviceType} = results;
+            await processApplication(application_id, submissionAttempts, serviceType);
         }
     } catch (error) {
         console.error(`checkForApplications: ${error}`);
@@ -40,9 +39,8 @@ async function checkForEligibleApplications() {
     }
 }
 
-async function processApplication(application_id, submission_attempts, service_type, submission_destination) {
+async function processApplication(application_id, submission_attempts, service_type) {
     try {
-        const isOrbit = submission_destination === 'ORBIT';
         const isEApp = service_type === 4;
         await updateApplicationAsProcessing(application_id, isEApp);
         if (isEApp) {
@@ -56,8 +54,7 @@ async function processApplication(application_id, submission_attempts, service_t
                     eAppData,
                     eAppDocumentUrls
                 );
-                if (isOrbit) await postToOrbit(applicationJsonObject, application_id, submission_attempts);
-                if (!isOrbit ) await postToCasebook(applicationJsonObject, application_id, submission_attempts);
+                await postToOrbit(applicationJsonObject, application_id, submission_attempts);
             }
         } else if (!isEApp) {
             let appData = await getAppData(application_id)
@@ -66,8 +63,7 @@ async function processApplication(application_id, submission_attempts, service_t
                 await updateApplicationAsFailed(application_id);
             } else {
                 const applicationJsonObject = await generateApplicationObject(appData)
-                if (isOrbit) await postToOrbit(applicationJsonObject, application_id, submission_attempts);
-                if (!isOrbit ) await postToCasebook(applicationJsonObject, application_id, submission_attempts);
+                await postToOrbit(applicationJsonObject, application_id, submission_attempts);
             }
         }
     } catch (error) {
@@ -287,57 +283,6 @@ async function postToOrbit(applicationJsonObject, application_id, submission_att
     }
 }
 
-async function postToCasebook(applicationJsonObject, application_id, submission_attempts) {
-    const controller = new AbortController();
-    const signal = controller.signal;
-
-    const submissionApiUrl = config.submissionApiUrl;
-    const objectString = JSON.stringify(applicationJsonObject, null, 0);
-    const this_submission_attempt = submission_attempts + 1
-    const hash = crypto
-        .createHmac('sha512', config.hmacKey)
-        .update(Buffer.from(objectString, 'utf-8'))
-        .digest('hex')
-        .toUpperCase();
-    try {
-        const httpsAgent = new Agent({
-            rejectUnauthorized: true,
-            cert: config.certificatePath,
-            key: config.keyPath
-        })
-        const response = await axios.post(submissionApiUrl, applicationJsonObject, {
-            headers: {
-                accept: 'application/json',
-                hash,
-                'content-type': 'application/json; charset=utf-8',
-                'api-version': '4',
-            },
-            httpsAgent,
-            timeout: 5000,
-            signal
-        });
-        if (response && response.status === 200) {
-            await updateApplicationAsSubmitted(application_id, response, this_submission_attempt)
-            await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'submitted', response.status, response.data)
-        } else {
-            controller.abort();
-            await placeBackInTheQueue(application_id, this_submission_attempt)
-            await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'failed', response.status, response.data)
-            if (submission_attempts === maxRetryAttempts) {
-                await updateApplicationAsFailed(application_id)
-            }
-        }
-    } catch (error) {
-        controller.abort();
-        console.error(`postToCasebook: ${error}`);
-        await placeBackInTheQueue(application_id, this_submission_attempt)
-        await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'failed', null, null)
-        if (this_submission_attempt === maxRetryAttempts) {
-            await updateApplicationAsFailed(application_id)
-        }
-    }
-}
-
 async function logSubmissionAttempt(application_id, retry_number, submitted_json, status, response_status_code, response_body){try {
     return SubmissionAttempts.create({
         application_id: application_id,
@@ -372,7 +317,7 @@ async function generateApplicationObject(results) {
     let altMobileNo;
     let altEmail;
 
-    const casebookJSON = {
+    const submissionJSON = {
         main: {
             companyName: results.main_organisation !== 'N/A' && results.main_organisation !== null && results.main_organisation !== " " ? results.main_organisation : "",
             flatNumber: "",
@@ -389,7 +334,7 @@ async function generateApplicationObject(results) {
         }
     };
 
-    updateCaseBookJSON('main', trimWhitespace(results.main_house_name));
+    updateSubmissionJSON('main', trimWhitespace(results.main_house_name));
 
     // if there is no alternate address, copy the details from the main address
     if (results.alt_full_name) {
@@ -402,13 +347,13 @@ async function generateApplicationObject(results) {
         altTelephone = results.alt_telephone;
         altMobileNo = results.alt_mobileNo;
         altEmail = results.alt_email;
-        casebookJSON.postcode = results.alt_postcode;
-        casebookJSON.alt.companyName = results.alt_organisation && results.alt_organisation !== 'N/A' && results.alt_organisation.length !== 0 && results.alt_organisation !== " " ? results.alt_organisation : "";
-        updateCaseBookJSON('alt', trimWhitespace(results.alt_house_name));
+        submissionJSON.postcode = results.alt_postcode;
+        submissionJSON.alt.companyName = results.alt_organisation && results.alt_organisation !== 'N/A' && results.alt_organisation.length !== 0 && results.alt_organisation !== " " ? results.alt_organisation : "";
+        updateSubmissionJSON('alt', trimWhitespace(results.alt_house_name));
     } else {
         altFullName = results.main_full_name;
-        casebookJSON.alt.companyName = casebookJSON.main.companyName;
-        updateCaseBookJSON('alt', trimWhitespace(results.main_house_name));
+        submissionJSON.alt.companyName = submissionJSON.main.companyName;
+        updateSubmissionJSON('alt', trimWhitespace(results.main_house_name));
         altStreet = results.main_street;
         altTown = results.main_town;
         altCounty = results.main_county;
@@ -419,7 +364,7 @@ async function generateApplicationObject(results) {
         altEmail = results.main_email;
     }
 
-    function updateCaseBookJSON(type, house) {
+    function updateSubmissionJSON(type, house) {
         const isNumeric = require("isnumeric");
         const house_name = house.toString().split(" ");
         const apartments = house.indexOf('Apartments');
@@ -431,54 +376,54 @@ async function generateApplicationObject(results) {
             house_name[0].toLowerCase() === "flat" &&
             isNumeric(house_name[1].replace(',', '').substr(1, isNumeric(house_name[1].replace(',', '').length)))
         ) {
-            casebookJSON[type].flatNumber = house_name[1].replace(',', '');
+            submissionJSON[type].flatNumber = house_name[1].replace(',', '');
 
             if (isNumeric(house_name[house_name.length - 1].replace("-", "").replace(',', ''))) {
-                casebookJSON[type].houseNumber = house_name[house_name.length - 1].replace(',', '');
-                casebookJSON[type].premises = house.substr(casebookJSON[type].flatNumber.length + 7, house.toString().length - (casebookJSON[type].flatNumber.length + 7) - (casebookJSON[type].houseNumber.length + 1));
+                submissionJSON[type].houseNumber = house_name[house_name.length - 1].replace(',', '');
+                submissionJSON[type].premises = house.substr(submissionJSON[type].flatNumber.length + 7, house.toString().length - (submissionJSON[type].flatNumber.length + 7) - (submissionJSON[type].houseNumber.length + 1));
             } else {
-                casebookJSON[type].premises = house.substr(house_name[0].length + house_name[1].length + 1, house.length).replace(',', '');
+                submissionJSON[type].premises = house.substr(house_name[0].length + house_name[1].length + 1, house.length).replace(',', '');
             }
         } else if (isNumeric(house_name[house_name.length - 1].replace("-", ""))) {
-            casebookJSON[type].houseNumber = house_name[house_name.length - 1];
+            submissionJSON[type].houseNumber = house_name[house_name.length - 1];
             if (apartments != -1 || flats !== -1) {
                 const subBuilding = house.substr(0, house.length - house_name[house_name.length - 1].length).replace(',', '');
                 if (subBuilding.split(" ")[0].toLowerCase() === "flat") {
-                    casebookJSON[type].flatNumber = subBuilding.split(" ")[1];
-                    casebookJSON[type].premises = subBuilding.substr(subBuilding.split(" ")[0].length + subBuilding.split(" ")[1].length + 2, subBuilding.length - 1).replace(',', '');
+                    submissionJSON[type].flatNumber = subBuilding.split(" ")[1];
+                    submissionJSON[type].premises = subBuilding.substr(subBuilding.split(" ")[0].length + subBuilding.split(" ")[1].length + 2, subBuilding.length - 1).replace(',', '');
                 } else {
-                    casebookJSON[type].flatNumber = subBuilding.split(" ")[0];
-                    casebookJSON[type].premises = subBuilding.substr(subBuilding.split(" ")[0].length, subBuilding.length - 1).replace(',', '');
+                    submissionJSON[type].flatNumber = subBuilding.split(" ")[0];
+                    submissionJSON[type].premises = subBuilding.substr(subBuilding.split(" ")[0].length, subBuilding.length - 1).replace(',', '');
                 }
             } else {
-                casebookJSON[type].premises = house.substr(0, house.length - house_name[house_name.length - 1].length).replace(',', '');
+                submissionJSON[type].premises = house.substr(0, house.length - house_name[house_name.length - 1].length).replace(',', '');
             }
         } else if (house_name[0] && house_name[1] && house_name[0].toLowerCase() === "flat" && isNumeric(house_name[1].replace(',', ''))) {
-            casebookJSON[type].flatNumber = house_name[1].replace(',', '');
-            casebookJSON[type].premises = house.substr(house_name[0].length + house_name[1].length + 1, house.length).replace(',', '');
+            submissionJSON[type].flatNumber = house_name[1].replace(',', '');
+            submissionJSON[type].premises = house.substr(house_name[0].length + house_name[1].length + 1, house.length).replace(',', '');
         } else if (isNumeric(house_name[0].split(/[A-Za-z]/)[0])) {
-            casebookJSON[type].houseNumber = house_name[0];
-            casebookJSON[type].premises = house.substr(house_name[0].length + 1, house.length).replace(',', '');
+            submissionJSON[type].houseNumber = house_name[0];
+            submissionJSON[type].premises = house.substr(house_name[0].length + 1, house.length).replace(',', '');
         } else if (isNumeric(house_name[0].replace("-", ""))) {
-            casebookJSON[type].houseNumber = house_name[0].replace(',', '');
-            casebookJSON[type].premises = house.substr(house_name[0].length + 1, house.length).replace(',', '');
+            submissionJSON[type].houseNumber = house_name[0].replace(',', '');
+            submissionJSON[type].premises = house.substr(house_name[0].length + 1, house.length).replace(',', '');
         } else if (isNumeric(house_name[0].replace(",", ""))) {
-            casebookJSON[type].houseNumber = house_name[0].replace(',', '');
-            casebookJSON[type].premises = house.substr(house_name[0].length + 1, house.length - house_name[0].length + 1).replace(',', '');
+            submissionJSON[type].houseNumber = house_name[0].replace(',', '');
+            submissionJSON[type].premises = house.substr(house_name[0].length + 1, house.length - house_name[0].length + 1).replace(',', '');
         } else if (house.length > 10) {
-            casebookJSON[type].premises = house.replace(',', '');
+            submissionJSON[type].premises = house.replace(',', '');
         } else {
-            casebookJSON[type].premises = house;
+            submissionJSON[type].premises = house;
         }
 
         // Catch all fixes
-        if (casebookJSON[type].houseNumber.length > 10) {
-            casebookJSON[type].premises = casebookJSON[type].houseNumber + casebookJSON[type].premises;
-            casebookJSON[type].houseNumber = "";
+        if (submissionJSON[type].houseNumber.length > 10) {
+            submissionJSON[type].premises = submissionJSON[type].houseNumber + submissionJSON[type].premises;
+            submissionJSON[type].houseNumber = "";
         }
-        if (casebookJSON[type].flatNumber.length > 10) {
-            casebookJSON[type].premises = 'Flat ' + casebookJSON[type].flatNumber + casebookJSON[type].premises;
-            casebookJSON[type].flatNumber = "";
+        if (submissionJSON[type].flatNumber.length > 10) {
+            submissionJSON[type].premises = 'Flat ' + submissionJSON[type].flatNumber + submissionJSON[type].premises;
+            submissionJSON[type].flatNumber = "";
         }
     }
 
@@ -513,10 +458,10 @@ async function generateApplicationObject(results) {
                     successfulReturnDetails: {
                         fullName: trimWhitespace(results.main_full_name),
                         address: {
-                            companyName: casebookJSON.main.companyName,
-                            flatNumber: casebookJSON.main.flatNumber || "",
-                            premises: casebookJSON.main.premises || "",
-                            houseNumber: casebookJSON.main.houseNumber || "",
+                            companyName: submissionJSON.main.companyName,
+                            flatNumber: submissionJSON.main.flatNumber || "",
+                            premises: submissionJSON.main.premises || "",
+                            houseNumber: submissionJSON.main.houseNumber || "",
                             street: trimWhitespace(results.main_street),
                             district: "",
                             town: trimWhitespace(results.main_town) || "",
@@ -531,10 +476,10 @@ async function generateApplicationObject(results) {
                     unsuccessfulReturnDetails: {
                         fullName: altFullName,
                         address: {
-                            companyName: casebookJSON.alt.companyName,
-                            flatNumber: casebookJSON.alt.flatNumber || "",
-                            premises: casebookJSON.alt.premises || "",
-                            houseNumber: casebookJSON.alt.houseNumber || "",
+                            companyName: submissionJSON.alt.companyName,
+                            flatNumber: submissionJSON.alt.flatNumber || "",
+                            premises: submissionJSON.alt.premises || "",
+                            houseNumber: submissionJSON.alt.houseNumber || "",
                             street: trimWhitespace(altStreet) || "",
                             district: "",
                             town: trimWhitespace(altTown) || "",
