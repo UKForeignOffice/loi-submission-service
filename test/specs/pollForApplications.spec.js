@@ -54,24 +54,6 @@ describe('checkForEligibleApplications', () => {
     });
 });
 
-describe('isOrbit', () => {
-    it('should be true when submission_destination is ORBIT', () => {
-        const submission_destination = 'ORBIT';
-
-        const isOrbit = submission_destination === 'ORBIT';
-
-        expect(isOrbit).to.be.true;
-    });
-
-    it('should be false when submission_destination is not ORBIT', () => {
-        const submission_destination = 'SomeOtherValue';
-
-        const isOrbit = submission_destination === 'ORBIT';
-
-        expect(isOrbit).to.be.false;
-    });
-});
-
 describe('isEApp', () => {
     it('should be true when service_type is 4', () => {
         const service_type = 4;

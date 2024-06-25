@@ -40,8 +40,12 @@ module.exports = function(sequelize, DataTypes) {
             type: DataTypes.INTEGER,
             allowNull: true
         },
-        casebook_response_code: {
+        submission_response_code: {
             type: DataTypes.STRING,
+            allowNull: true
+        },
+        submission_request: {
+            type: DataTypes.JSON,
             allowNull: true
         }
     }, {
