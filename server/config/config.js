@@ -2,7 +2,6 @@ var Sequelize = require('sequelize');
 require('dotenv').config();
 
 var additionalPaymentApiUrl = process.env.ADDITIONALPAYMENTAPIURL;
-var certificatePath = process.env.NODE_ENV === 'development' ? process.env.CASEBOOKCERTIFICATE.replace(/\\n/gm, '\n') : process.env.CASEBOOKCERTIFICATE;
 var dbConn = process.env.DBCONN;
 var edmsAuthHost = process.env.EDMS_AUTH_HOST;
 var edmsAuthScope = process.env.EDMS_AUTH_SCOPE;
@@ -14,7 +13,6 @@ var submissionApiUrl = process.env.SUBMISSIONAPIURL;
 
 var config = {
     "additionalPaymentApiUrl": additionalPaymentApiUrl,
-    "certificatePath": certificatePath,
     "db": dbConn,
     "edmsBearerToken": edmsBearerToken,
     "edmsHost": edmsHost,
