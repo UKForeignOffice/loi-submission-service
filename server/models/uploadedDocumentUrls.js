@@ -14,6 +14,10 @@ module.exports = function (sequelize, DataTypes) {
                 type: DataTypes.STRING,
                 allowNull: false,
             },
+            presigned_url: {
+                type: DataTypes.STRING,
+                allowNull: false,
+            }
         },
         { tableName: 'UploadedDocumentUrls' }
     );

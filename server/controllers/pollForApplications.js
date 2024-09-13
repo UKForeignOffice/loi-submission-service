@@ -9,7 +9,9 @@ const maxRetryAttempts = parseInt(config.maxRetryAttempts);
 const { Op } = require("sequelize");
 const { sequelize } = require("../models");
 const {getEdmsAccessToken} = require("../services/HelperService");
-const {Agent} = require("https");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+const { GetObjectCommand, S3 } = require("@aws-sdk/client-s3");
+const s3 = new S3();
 
 async function checkForApplications() {
     try {
@@ -49,10 +51,11 @@ async function processApplication(application_id, submission_attempts, service_t
                 console.log(`No exported app data found for ${application_id}`);
                 await updateApplicationAsFailed(application_id);
             } else {
-                const eAppDocumentUrls = await getEAppDocumentUrls(application_id)
+                if (config.nodeEnv.toLowerCase() !== "development") await generatePresignedUrls(application_id);
+                const eAppDocuments = await getEAppDocumentUrls(application_id);
                 const applicationJsonObject = await generateEAppObject(
                     eAppData,
-                    eAppDocumentUrls
+                    eAppDocuments
                 );
                 await postToOrbit(applicationJsonObject, application_id, submission_attempts);
             }
@@ -104,6 +107,56 @@ async function getEAppDocumentUrls(application_id) {
         });
     } catch (error) {
         console.error(`getEAppDocumentUrls: ${error}`);
+    }
+}
+
+async function addPresignedUrlToDB(application_id, url, key) {
+    try {
+        return await UploadedDocumentUrls.update({
+            presigned_url: url
+        }, {
+            where: {
+                application_id: application_id,
+                uploaded_url: key
+            }
+        });
+    } catch (error) {
+        console.error(`updateUploadedDocumentUrls: ${error}`);
+    }
+}
+
+async function generatePresignedUrls(application_id) {
+    try {
+        const S3_BUCKET = config.s3Bucket;
+        const EXPIRY_SECONDS = 3600;
+
+        const documents = await getEAppDocumentUrls(application_id);
+
+        if (!documents || documents.length === 0) {
+            console.error(`No documents found for application ${application_id}`);
+            return;
+        }
+
+        const generateUrlPromises = documents.map(async (doc) => {
+            const params = {
+                Bucket: S3_BUCKET,
+                Key: doc.uploaded_url,
+            };
+
+            try {
+                const url = await getSignedUrl(s3, new GetObjectCommand(params), { expiresIn: EXPIRY_SECONDS });
+                console.info(`Presigned URL generated for ${application_id} ${doc.filename}`);
+                await addPresignedUrlToDB(application_id, url, doc.uploaded_url);
+            } catch (err) {
+                console.error(`Failed to generate presigned URL for ${application_id} ${doc.filename}: ${err}`);
+                throw new Error(err);
+            }
+        });
+
+        await Promise.all(generateUrlPromises);
+
+    } catch (error) {
+        console.error(`generatePresignedUrls: ${error}`);
     }
 }
 
@@ -211,7 +264,7 @@ async function generateDocumentArray(eAppDocumentUrls) {
     try {
         return eAppDocumentUrls.map((document) => ({
             name: document.filename,
-            downloadUrl: document.uploaded_url,
+            downloadUrl: document.presigned_url || document.uploaded_url,
         }));
     } catch (error) {
         console.error(`generateDocumentArray: ${error}`);
