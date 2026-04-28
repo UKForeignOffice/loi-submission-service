@@ -35,6 +35,4 @@ npm-debug.log
 
 logs/*
 server/apidoc
-linting.xml
-test-results.xml
 .DS_Store
