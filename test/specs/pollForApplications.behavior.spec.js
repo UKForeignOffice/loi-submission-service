@@ -25,7 +25,7 @@ describe('pollForApplications behavior', () => {
         where: {
           submitted: 'queued',
           submissionAttempts: {
-            [Op.lt]: parseInt(config.maxRetryAttempts),
+            [Op.lt]: parseInt(config.maxRetryAttempts, 10),
           },
         },
         order: models.sequelize.random(),

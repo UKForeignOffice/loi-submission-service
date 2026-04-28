@@ -5,7 +5,7 @@ const Application = require('../models/index').Application
 const SubmissionAttempts = require('../models/index').SubmissionAttempts
 const ExportedEAppData = require('../models/index').ExportedEAppData
 const UploadedDocumentUrls = require('../models/index').UploadedDocumentUrls
-const maxRetryAttempts = parseInt(config.maxRetryAttempts)
+const maxRetryAttempts = parseInt(config.maxRetryAttempts, 10)
 const { Op } = require('sequelize')
 const { sequelize } = require('../models')
 const { getEdmsAccessToken } = require('../services/HelperService')
@@ -57,7 +57,7 @@ async function processApplication(application_id, submission_attempts, service_t
         await postToOrbit(applicationJsonObject, application_id, submission_attempts)
       }
     } else if (!isEApp) {
-      let appData = await getAppData(application_id)
+      const appData = await getAppData(application_id)
       if (!appData) {
         console.log(`No exported app data found for ${application_id}`)
         await updateApplicationAsFailed(application_id)
@@ -241,7 +241,7 @@ async function generateEAppObject(eAppData, eAppDocumentUrls) {
       legalisationApplication: {
         userId: 'legalisation',
         caseType: 'eApostille Service',
-        timestamp: new Date().getTime().toString(),
+        timestamp: Date.now().toString(),
         applicant: {
           forenames: eAppData.first_name?.trim(),
           surname: eAppData.last_name?.trim(),
@@ -271,7 +271,7 @@ async function generateEAppObject(eAppData, eAppDocumentUrls) {
   }
 }
 
-async function generateDocumentArray(eAppDocumentUrls) {
+function generateDocumentArray(eAppDocumentUrls) {
   try {
     return eAppDocumentUrls.map((document) => ({
       name: document.filename,
@@ -286,7 +286,7 @@ async function postToOrbit(applicationJsonObject, application_id, submission_att
   const controller = new AbortController()
   const signal = controller.signal
 
-  const edmsSubmissionApiUrl = config.edmsHost + '/api/v1/submitApplication'
+  const edmsSubmissionApiUrl = `${config.edmsHost}/api/v1/submitApplication`
   const edmsBearerToken = await getEdmsAccessToken()
   const this_submission_attempt = submission_attempts + 1
   const startTime = new Date()
@@ -343,7 +343,7 @@ async function postToOrbit(applicationJsonObject, application_id, submission_att
   }
 }
 
-async function logSubmissionAttempt(
+function logSubmissionAttempt(
   application_id,
   retry_number,
   submitted_json,
@@ -375,7 +375,7 @@ function trimWhitespace(input) {
   return input
 }
 
-async function generateApplicationObject(results) {
+function generateApplicationObject(results) {
   let altFullName
   let altStreet
   let altTown
@@ -471,7 +471,7 @@ async function generateApplicationObject(results) {
       }
     } else if (isNumeric(house_name[house_name.length - 1].replace('-', ''))) {
       submissionJSON[type].houseNumber = house_name[house_name.length - 1]
-      if (apartments != -1 || flats !== -1) {
+      if (apartments !== -1 || flats !== -1) {
         const subBuilding = house.substr(0, house.length - house_name[house_name.length - 1].length).replace(',', '')
         if (subBuilding.split(' ')[0].toLowerCase() === 'flat') {
           submissionJSON[type].flatNumber = subBuilding.split(' ')[1]
@@ -522,7 +522,7 @@ async function generateApplicationObject(results) {
       submissionJSON[type].houseNumber = ''
     }
     if (submissionJSON[type].flatNumber.length > 10) {
-      submissionJSON[type].premises = 'Flat ' + submissionJSON[type].flatNumber + submissionJSON[type].premises
+      submissionJSON[type].premises = `Flat ${submissionJSON[type].flatNumber}${submissionJSON[type].premises}`
       submissionJSON[type].flatNumber = ''
     }
   }
@@ -534,7 +534,7 @@ async function generateApplicationObject(results) {
       legalisationApplication: {
         userId: 'legalisation',
         caseType: results.applicationType,
-        timestamp: new Date().getTime().toString(),
+        timestamp: Date.now().toString(),
         applicant: {
           forenames: trimWhitespace(results.first_name),
           surname: trimWhitespace(results.last_name),
@@ -600,7 +600,7 @@ async function generateApplicationObject(results) {
       legalisationApplication: {
         userId: 'legalisation',
         caseType: results.applicationType,
-        timestamp: new Date().getTime().toString(),
+        timestamp: Date.now().toString(),
         applicant: {
           forenames: trimWhitespace(results.first_name),
           surname: trimWhitespace(results.last_name),

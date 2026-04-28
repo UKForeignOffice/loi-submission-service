@@ -1,5 +1,4 @@
-module.exports = function (sequelize, DataTypes) {
-  return sequelize.define(
+module.exports = (sequelize, DataTypes) => sequelize.define(
     'SubmissionAttempts',
     {
       submission_id: {
@@ -31,4 +30,3 @@ module.exports = function (sequelize, DataTypes) {
     },
     { tableName: 'SubmissionAttempts' },
   )
-}

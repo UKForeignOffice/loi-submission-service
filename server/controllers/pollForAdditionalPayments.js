@@ -8,7 +8,7 @@ const { getEdmsAccessToken } = require('../services/HelperService')
 const { sequelize } = require('../models')
 
 const checkForAdditionalPayments = {
-  checkForAdditionalPayments: async function () {
+  checkForAdditionalPayments: async () => {
     try {
       const results = await checkForEligibleAdditionalPayments()
       if (results) await processMessage(results.dataValues)
@@ -44,8 +44,8 @@ const checkForAdditionalPayments = {
         if (response === 200) {
           await markPaymentAsSubmitted(additionalPayment, response)
         } else {
-          let currentSubmissionAttempts = await getSubmissionAttempts(additionalPayment)
-          let retryAttempts = currentSubmissionAttempts.submission_attempts + 1
+          const currentSubmissionAttempts = await getSubmissionAttempts(additionalPayment)
+          const retryAttempts = currentSubmissionAttempts.submission_attempts + 1
 
           console.log(`maxRetryAttempts: ${maxRetryAttempts}`)
           console.log(`retryAttempts: ${retryAttempts}`)
@@ -66,7 +66,7 @@ const checkForAdditionalPayments = {
       try {
         const payload = {
           payment: {
-            timestamp: new Date().getTime().toString(),
+            timestamp: Date.now().toString(),
             userId: 'legalisation',
             applicationReference: additionalPayment.application_id,
             reference: additionalPayment.payment_reference,
@@ -98,7 +98,7 @@ const checkForAdditionalPayments = {
 
       try {
         const signal = controller.signal
-        const edmsAdditionalPaymentUrl = config.edmsHost + '/api/v1/paymentCapture'
+        const edmsAdditionalPaymentUrl = `${config.edmsHost}/api/v1/paymentCapture`
         const edmsBearerToken = await getEdmsAccessToken()
         const startTime = new Date()
 

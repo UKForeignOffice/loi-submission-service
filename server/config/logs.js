@@ -1,5 +1,5 @@
 const { createLogger, format, transports } = require('winston')
-const { combine, timestamp, printf, json } = format
+const { combine, timestamp, printf } = format
 
 const logger = createLogger({
   transports: [
@@ -7,7 +7,7 @@ const logger = createLogger({
       level: 'info',
       format: combine(
         timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-        printf(({ level, message, timestamp, ...rest }) => {
+        printf(({ level, message, timestamp, ..._rest }) => {
           return `${level.toUpperCase()}: ${message}`
         }),
       ),
@@ -16,7 +16,7 @@ const logger = createLogger({
       level: 'error',
       format: combine(
         timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-        printf(({ level, message, timestamp, ...rest }) => {
+        printf(({ level, message, timestamp, ..._rest }) => {
           return `${level.toUpperCase()}: ${message}`
         }),
       ),
