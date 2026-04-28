@@ -1,4 +1,4 @@
-var Sequelize = require('sequelize')
+var _Sequelize = require('sequelize')
 require('dotenv').config()
 
 var additionalPaymentApiUrl = process.env.ADDITIONALPAYMENTAPIURL

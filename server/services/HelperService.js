@@ -14,8 +14,8 @@ const HelperService = {
     }
 
     try {
-      const cognito_app_client_id = config.edmsBearerToken['cognito_app_client_id']
-      const cognito_app_client_secret = config.edmsBearerToken['cognito_app_client_secret']
+      const cognito_app_client_id = config.edmsBearerToken.cognito_app_client_id
+      const cognito_app_client_secret = config.edmsBearerToken.cognito_app_client_secret
       const token = Buffer.from(`${cognito_app_client_id}:${cognito_app_client_secret}`).toString('base64')
 
       const response = await axios({

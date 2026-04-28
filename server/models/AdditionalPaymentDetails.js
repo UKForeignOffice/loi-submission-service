@@ -1,5 +1,4 @@
-module.exports = function (sequelize, DataTypes) {
-  return sequelize.define(
+module.exports = (sequelize, DataTypes) => sequelize.define(
     'AdditionalPaymentDetails',
     {
       application_id: {
@@ -54,4 +53,3 @@ module.exports = function (sequelize, DataTypes) {
       timestamps: false,
     },
   )
-}

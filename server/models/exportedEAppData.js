@@ -1,5 +1,4 @@
-module.exports = function (sequelize, DataTypes) {
-  return sequelize.define(
+module.exports = (sequelize, DataTypes) => sequelize.define(
     'ExportedEAppData',
     {
       application_id: {
@@ -48,4 +47,3 @@ module.exports = function (sequelize, DataTypes) {
     },
     { tableName: 'ExportedEAppData' },
   )
-}
