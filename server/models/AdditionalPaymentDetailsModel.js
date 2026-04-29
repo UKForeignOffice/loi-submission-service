@@ -1,4 +1,5 @@
-module.exports = (sequelize, DataTypes) => sequelize.define(
+export const AdditionalPaymentDetailsModel = (sequelize, DataTypes) =>
+  sequelize.define(
     'AdditionalPaymentDetails',
     {
       application_id: {

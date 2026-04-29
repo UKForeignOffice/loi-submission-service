@@ -1,7 +1,8 @@
-const { createLogger, format, transports } = require('winston')
+import { createLogger, format, transports } from 'winston'
+
 const { combine, timestamp, printf } = format
 
-const logger = createLogger({
+export const logger = createLogger({
   transports: [
     new transports.Console({
       level: 'info',
@@ -23,9 +24,3 @@ const logger = createLogger({
     }),
   ],
 })
-
-console.error = logger.error.bind(logger)
-console.log = logger.info.bind(logger)
-console.info = logger.info.bind(logger)
-console.debug = logger.debug.bind(logger)
-console.warn = logger.warn.bind(logger)

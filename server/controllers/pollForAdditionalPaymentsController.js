@@ -1,19 +1,20 @@
-const axios = require('axios')
-const config = require('../config/config')
-const AdditionalPaymentDetails = require('../models/index').AdditionalPaymentDetails
-const moment = require('moment')
-const maxRetryAttempts = config.maxRetryAttempts
-const { Op } = require('sequelize')
-const { getEdmsAccessToken } = require('../services/HelperService')
-const { sequelize } = require('../models')
+import axios from 'axios'
+import moment from 'moment'
+import { Op } from 'sequelize'
+import { config } from '../config/config.js'
+import { logger } from '../config/logs.js'
+import { AdditionalPaymentDetails, sequelize } from '../models/index.js'
+import { HelperService } from '../services/HelperService.js'
 
-const checkForAdditionalPayments = {
+const maxRetryAttempts = config.maxRetryAttempts
+
+export const checkForAdditionalPaymentsController = {
   checkForAdditionalPayments: async () => {
     try {
       const results = await checkForEligibleAdditionalPayments()
       if (results) await processMessage(results.dataValues)
     } catch (error) {
-      console.error(error)
+      logger.error(error)
     }
 
     async function checkForEligibleAdditionalPayments() {
@@ -28,13 +29,13 @@ const checkForAdditionalPayments = {
           order: sequelize.random(),
         })
       } catch (error) {
-        console.error(error)
+        logger.error(error)
       }
     }
 
     async function processMessage(additionalPayment) {
       try {
-        console.log(`Processing ${additionalPayment.application_id}`)
+        logger.info(`Processing ${additionalPayment.application_id}`)
 
         if (!additionalPayment.submission_request) await generatePayload(additionalPayment)
 
@@ -47,18 +48,18 @@ const checkForAdditionalPayments = {
           const currentSubmissionAttempts = await getSubmissionAttempts(additionalPayment)
           const retryAttempts = currentSubmissionAttempts.submission_attempts + 1
 
-          console.log(`maxRetryAttempts: ${maxRetryAttempts}`)
-          console.log(`retryAttempts: ${retryAttempts}`)
+          logger.info(`maxRetryAttempts: ${maxRetryAttempts}`)
+          logger.info(`retryAttempts: ${retryAttempts}`)
 
           if (retryAttempts >= maxRetryAttempts) {
-            console.log(`Retry Attempt limit reached`)
+            logger.info(`Retry Attempt limit reached`)
             await markPaymentAsFailed(additionalPayment, retryAttempts, response)
           } else {
             await updateSubmissionAttempts(additionalPayment, retryAttempts, response)
           }
         }
       } catch (error) {
-        console.error(error)
+        logger.error(error)
       }
     }
 
@@ -76,7 +77,7 @@ const checkForAdditionalPayments = {
         }
         await updateSubmissionPayload(additionalPayment, payload)
       } catch (error) {
-        console.error(error)
+        logger.error(error)
       }
     }
 
@@ -89,7 +90,7 @@ const checkForAdditionalPayments = {
           },
         })
       } catch (error) {
-        console.error(error)
+        logger.error(error)
       }
     }
 
@@ -99,7 +100,7 @@ const checkForAdditionalPayments = {
       try {
         const signal = controller.signal
         const edmsAdditionalPaymentUrl = `${config.edmsHost}/api/v1/paymentCapture`
-        const edmsBearerToken = await getEdmsAccessToken()
+        const edmsBearerToken = await HelperService.getEdmsAccessToken()
         const startTime = new Date()
 
         const response = await axios.post(edmsAdditionalPaymentUrl, payload, {
@@ -115,20 +116,20 @@ const checkForAdditionalPayments = {
         const elapsedTime = endTime - startTime
 
         if (response && response.status === 200) {
-          console.log(
+          logger.info(
             `Additional payment for ${additionalPayment.application_id} has been submitted to ORBIT successfully`,
           )
-          console.log(`Orbit payment capture request response time: ${elapsedTime}ms`)
+          logger.info(`Orbit payment capture request response time: ${elapsedTime}ms`)
           return response.status
         } else {
-          console.error(
+          logger.error(
             `Failed to submit additional payment for ${additionalPayment.application_id}. Status code: ${response.status || 500}`,
           )
           controller.abort()
           return response.status ? response.status : 500
         }
       } catch (error) {
-        console.error(`Error submitting additional payment to ORBIT: ${error}`)
+        logger.error(`Error submitting additional payment to ORBIT: ${error}`)
         return error.response ? error.response.status : 500
       }
     }
@@ -147,7 +148,7 @@ const checkForAdditionalPayments = {
           },
         )
       } catch (error) {
-        console.error(error)
+        logger.error(error)
       }
     }
 
@@ -167,7 +168,7 @@ const checkForAdditionalPayments = {
           },
         )
       } catch (error) {
-        console.error(error)
+        logger.error(error)
       }
     }
 
@@ -180,7 +181,7 @@ const checkForAdditionalPayments = {
           },
         })
       } catch (error) {
-        console.error(error)
+        logger.error(error)
       }
     }
 
@@ -200,7 +201,7 @@ const checkForAdditionalPayments = {
           },
         )
       } catch (error) {
-        console.error(error)
+        logger.error(error)
       }
     }
 
@@ -219,10 +220,8 @@ const checkForAdditionalPayments = {
           },
         )
       } catch (error) {
-        console.error(error)
+        logger.error(error)
       }
     }
   },
 }
-
-module.exports = checkForAdditionalPayments

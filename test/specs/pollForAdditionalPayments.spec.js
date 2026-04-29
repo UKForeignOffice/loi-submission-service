@@ -1,25 +1,32 @@
-const chai = require('chai')
-const sinon = require('sinon')
-const sinonChai = require('sinon-chai')
-const { Op } = require('sequelize')
-
-const config = require('../../server/config/config')
-const models = require('../../server/models')
-const pollForAdditionalPaymentsController = require('../../server/controllers/pollForAdditionalPayments')
+import chai from 'chai'
+import { Op } from 'sequelize'
+import sinon from 'sinon'
+import sinonChai from 'sinon-chai'
+import { config } from '../../server/config/config.js'
+import { logger } from '../../server/config/logs.js'
+import { checkForAdditionalPaymentsController } from '../../server/controllers/pollForAdditionalPaymentsController.js'
+import { AdditionalPaymentDetails, sequelize } from '../../server/models/index.js'
 
 chai.use(sinonChai)
 const { expect } = chai
+const { checkForAdditionalPayments } = checkForAdditionalPaymentsController
 
-describe('pollForAdditionalPayments.checkForAdditionalPayments', () => {
+describe('pollForAdditionalPaymentsController.checkForAdditionalPayments', () => {
+  let loggerErrorStub
+
+  beforeEach(() => {
+    loggerErrorStub = sinon.stub(logger, 'error')
+  })
+
   afterEach(() => {
     sinon.restore()
   })
 
   it('queries for queued records and exits when none found', async () => {
-    const findOneStub = sinon.stub(models.AdditionalPaymentDetails, 'findOne').resolves(null)
-    const updateStub = sinon.stub(models.AdditionalPaymentDetails, 'update')
+    const findOneStub = sinon.stub(AdditionalPaymentDetails, 'findOne').resolves(null)
+    const updateStub = sinon.stub(AdditionalPaymentDetails, 'update')
 
-    await pollForAdditionalPaymentsController.checkForAdditionalPayments()
+    await checkForAdditionalPayments()
 
     expect(findOneStub).to.have.been.calledOnceWith({
       where: {
@@ -28,18 +35,17 @@ describe('pollForAdditionalPayments.checkForAdditionalPayments', () => {
           [Op.lte]: config.maxRetryAttempts,
         },
       },
-      order: models.sequelize.random(),
+      order: sequelize.random(),
     })
     expect(updateStub).to.not.have.been.called
   })
 
   it('handles errors in eligibility lookup without throwing', async () => {
     const expectedError = new Error('database unavailable')
-    sinon.stub(models.AdditionalPaymentDetails, 'findOne').rejects(expectedError)
-    const consoleErrorStub = sinon.stub(console, 'error')
+    sinon.stub(AdditionalPaymentDetails, 'findOne').rejects(expectedError)
 
-    await pollForAdditionalPaymentsController.checkForAdditionalPayments()
+    await checkForAdditionalPayments()
 
-    expect(consoleErrorStub).to.have.been.calledOnceWith(expectedError)
+    expect(loggerErrorStub).to.have.been.calledOnceWith(expectedError)
   })
 })

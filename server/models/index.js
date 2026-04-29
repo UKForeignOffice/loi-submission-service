@@ -1,7 +1,13 @@
-const { Sequelize, DataTypes } = require('sequelize')
+import { DataTypes, Sequelize } from 'sequelize'
 
 // get environment specific config
-const commonConfig = require('../config/config.js')
+import { config } from '../config/config.js'
+import { AdditionalPaymentDetailsModel } from './AdditionalPaymentDetailsModel.js'
+import { ApplicationModel } from './ApplicationModel.js'
+import { ExportedApplicationDataModel } from './ExportedApplicationDataModel.js'
+import { ExportedEAppDataModel } from './ExportedEAppDataModel.js'
+import { SubmissionAttemptsModel } from './SubmissionAttemptsModel.js'
+import { UploadedDocumentUrlsModel } from './UploadedDocumentUrlsModel.js'
 
 // database options
 const opts = {
@@ -18,12 +24,12 @@ const opts = {
 }
 
 // initialise Sequelize
-const sequelize = new Sequelize(commonConfig.db, opts)
+export const sequelize = new Sequelize(config.db, opts)
 
-module.exports.sequelize = sequelize
-module.exports.Application = require('./application')(sequelize, DataTypes)
-module.exports.ExportedApplicationData = require('./exportedApplicationData')(sequelize, DataTypes)
-module.exports.SubmissionAttempts = require('./submissionAttempts')(sequelize, DataTypes)
-module.exports.AdditionalPaymentDetails = require('./AdditionalPaymentDetails')(sequelize, DataTypes)
-module.exports.ExportedEAppData = require('./exportedEAppData')(sequelize, DataTypes)
-module.exports.UploadedDocumentUrls = require('./uploadedDocumentUrls')(sequelize, DataTypes)
+export const sequelizeInstance = sequelize
+export const Application = ApplicationModel(sequelize, DataTypes)
+export const ExportedApplicationData = ExportedApplicationDataModel(sequelize, DataTypes)
+export const SubmissionAttempts = SubmissionAttemptsModel(sequelize, DataTypes)
+export const AdditionalPaymentDetails = AdditionalPaymentDetailsModel(sequelize, DataTypes)
+export const ExportedEAppData = ExportedEAppDataModel(sequelize, DataTypes)
+export const UploadedDocumentUrls = UploadedDocumentUrlsModel(sequelize, DataTypes)

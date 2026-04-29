@@ -1,12 +1,11 @@
-// Get the packages we need
-var express = require('express')
-var bodyParser = require('body-parser')
-var config = require('./config/config')
-var pollForApplicationsController = require('./controllers/pollForApplications')
-var pollForAdditionalPaymentsController = require('./controllers/pollForAdditionalPayments')
-require('./config/logs')
+import bodyParser from 'body-parser'
+import express from 'express'
+import { config } from './config/config.js'
+import pollForAdditionalPaymentsController from './controllers/pollForAdditionalPaymentsController.js'
+import pollForApplicationsController from './controllers/pollForApplicationsController.js'
+
 // Create our Express application
-var app = express()
+const app = express()
 
 app.set('showStackError', true)
 
@@ -20,4 +19,4 @@ app.use(
 setInterval(() => pollForApplicationsController.checkForApplications(), config.pollInterval)
 setInterval(() => pollForAdditionalPaymentsController.checkForAdditionalPayments(), config.pollInterval)
 
-module.exports = app
+export { app }
