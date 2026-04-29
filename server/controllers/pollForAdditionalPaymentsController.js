@@ -1,5 +1,4 @@
 import axios from 'axios'
-import moment from 'moment'
 import { Op } from 'sequelize'
 import { config } from '../config/config.js'
 import { logger } from '../config/logs.js'
@@ -7,6 +6,17 @@ import { AdditionalPaymentDetails, sequelize } from '../models/index.js'
 import { HelperService } from '../services/HelperService.js'
 
 const maxRetryAttempts = config.maxRetryAttempts
+
+const formatDate = (dateTimeNow) =>
+  new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  }).format(dateTimeNow)
 
 export const checkForAdditionalPaymentsController = {
   checkForAdditionalPayments: async () => {
@@ -139,7 +149,7 @@ export const checkForAdditionalPaymentsController = {
         return await AdditionalPaymentDetails.update(
           {
             submission_request: payload,
-            updated_at: moment().format('DD MMMM YYYY, h:mm:ss A'),
+            updated_at: formatDate(Date.now()),
           },
           {
             where: {
@@ -159,7 +169,7 @@ export const checkForAdditionalPaymentsController = {
             submitted: 'submitted',
             submission_attempts: additionalPayment.submission_attempts + 1,
             submission_response_code: responseStatusCode,
-            updated_at: moment().format('DD MMMM YYYY, h:mm:ss A'),
+            updated_at: formatDate(Date.now()),
           },
           {
             where: {
@@ -192,7 +202,7 @@ export const checkForAdditionalPaymentsController = {
             submitted: 'failed',
             submission_attempts: retryAttempts,
             submission_response_code: responseStatusCode,
-            updated_at: moment().format('DD MMMM YYYY, h:mm:ss A'),
+            updated_at: formatDate(Date.now()),
           },
           {
             where: {
@@ -211,7 +221,7 @@ export const checkForAdditionalPaymentsController = {
           {
             submission_attempts: retryAttempts,
             submission_response_code: responseStatusCode,
-            updated_at: moment().format('DD MMMM YYYY, h:mm:ss A'),
+            updated_at: formatDate(Date.now()),
           },
           {
             where: {
