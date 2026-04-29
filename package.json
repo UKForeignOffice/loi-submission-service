@@ -4,7 +4,7 @@
   "type": "module",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1038.0",
-    "@aws-sdk/s3-request-presigner": "^3.723.0",
+    "@aws-sdk/s3-request-presigner": "^3.1038.0",
     "axios": "1.13.6",
     "body-parser": "^1.19.1",
     "dotenv": "^16.4.7",
@@ -29,7 +29,6 @@
     "@vitest/coverage-v8": "^4.1.5"
   },
   "overrides": {
-    "axios": "1.13.6",
-    "fast-xml-parser": "^5.5.7"
+    "axios": "1.13.6"
   }
 }
