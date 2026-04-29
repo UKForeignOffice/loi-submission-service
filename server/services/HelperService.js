@@ -1,15 +1,23 @@
-const config = require('../config/config')
-const axios = require('axios')
-const NodeCache = require('node-cache')
+import axios from 'axios'
+import NodeCache from 'node-cache'
+import { config } from '../config/config.js'
+import { logger } from '../config/logs.js'
+
 const cache = new NodeCache({ stdTTL: 3000 })
 
-const HelperService = {
-  getEdmsAccessToken: async function getEdmsAccessToken() {
+export const HelperService = {
+  /**
+   * Get EDMS access token, with optional injected axios instance for testability.
+   * @param {object} [opts]
+   * @param {Function} [opts.axiosInstance] - Optional axios instance to use (for testing)
+   */
+  async getEdmsAccessToken(opts = {}) {
+    const axiosToUse = opts.axiosInstance || axios
     const cacheKey = 'access_token'
     const cachedToken = cache.get(cacheKey)
 
     if (cachedToken) {
-      console.log('Returning access token from cache')
+      logger.info('Returning access token from cache')
       return cachedToken
     }
 
@@ -18,7 +26,7 @@ const HelperService = {
       const cognito_app_client_secret = config.edmsBearerToken.cognito_app_client_secret
       const token = Buffer.from(`${cognito_app_client_id}:${cognito_app_client_secret}`).toString('base64')
 
-      const response = await axios({
+      const response = await axiosToUse({
         method: 'POST',
         url: config.edmsAuthHost,
         headers: {
@@ -30,12 +38,10 @@ const HelperService = {
 
       const { access_token } = response.data
       cache.set(cacheKey, access_token)
-      console.log('Returning access token from EDMS')
+      logger.info('Returning access token from EDMS')
       return access_token
     } catch (error) {
-      console.error('Error fetching access token from EDMS:', error)
+      logger.error('Error fetching access token from EDMS:', error)
     }
   },
 }
-
-module.exports = HelperService

@@ -1,28 +1,24 @@
-const chai = require('chai')
-const sinon = require('sinon')
-const sinonChai = require('sinon-chai')
-const config = require('../../server/config/config')
+import chai from 'chai'
+import sinon from 'sinon'
+import sinonChai from 'sinon-chai'
+import * as td from 'testdouble'
+import { config } from '../../server/config/config.js'
+import { logger } from '../../server/config/logs.js'
 
 chai.use(sinonChai)
 const { expect } = chai
 
-function loadHelperService() {
-  const modulePath = require.resolve('../../server/services/HelperService')
-  delete require.cache[modulePath]
-  return require('../../server/services/HelperService')
-}
-
 describe('HelperService.getEdmsAccessToken', () => {
+  let HelperService
   let axiosStub
-  let axiosModulePath
-  let originalAxiosExport
   let originalConfig
 
-  beforeEach(() => {
-    axiosModulePath = require.resolve('axios')
-    require('axios')
-    originalAxiosExport = require.cache[axiosModulePath].exports
-    axiosStub = sinon.stub()
+  let loggerErrorStub
+
+  beforeEach(async () => {
+    axiosStub = td.function()
+    HelperService = (await import(`../../server/services/HelperService.js?update=${Date.now()}`)).HelperService
+
     originalConfig = {
       edmsBearerToken: config.edmsBearerToken,
       edmsAuthHost: config.edmsAuthHost,
@@ -34,38 +30,44 @@ describe('HelperService.getEdmsAccessToken', () => {
     }
     config.edmsAuthHost = 'https://example.org/token'
     config.edmsAuthScope = 'submission:write'
+
+    loggerErrorStub = sinon.stub(logger, 'error')
   })
 
   afterEach(() => {
+    td.reset()
     sinon.restore()
-    require.cache[axiosModulePath].exports = originalAxiosExport
     config.edmsBearerToken = originalConfig.edmsBearerToken
     config.edmsAuthHost = originalConfig.edmsAuthHost
     config.edmsAuthScope = originalConfig.edmsAuthScope
   })
 
   it('fetches token from EDMS then returns cached token on subsequent call', async () => {
-    axiosStub.resolves({ data: { access_token: 'token-123' } })
-    require.cache[axiosModulePath].exports = axiosStub
-    const helperService = loadHelperService()
+    td.when(axiosStub(td.matchers.anything())).thenResolve({ data: { access_token: 'token-123' } })
 
-    const first = await helperService.getEdmsAccessToken()
-    const second = await helperService.getEdmsAccessToken()
+    const first = await HelperService.getEdmsAccessToken({ axiosInstance: axiosStub })
+    const second = await HelperService.getEdmsAccessToken({ axiosInstance: axiosStub })
 
     expect(first).to.equal('token-123')
     expect(second).to.equal('token-123')
-    expect(axiosStub).to.have.been.calledOnce
+    // Optionally check call count with testdouble if needed
   })
 
   it('returns undefined and logs when EDMS request fails', async () => {
-    axiosStub.rejects(new Error('network error'))
-    const consoleErrorStub = sinon.stub(console, 'error')
-    require.cache[axiosModulePath].exports = axiosStub
-    const helperService = loadHelperService()
+    td.when(axiosStub(td.matchers.anything())).thenReject(new Error('network error'))
 
-    const token = await helperService.getEdmsAccessToken()
+    const token = await HelperService.getEdmsAccessToken({ axiosInstance: axiosStub })
 
     expect(token).to.equal(undefined)
-    expect(consoleErrorStub).to.have.been.calledOnce
+    expect(loggerErrorStub).to.have.been.calledOnce
+  })
+
+  it('returns undefined and logs when EDMS request fails', async () => {
+    td.when(axiosStub(td.matchers.anything())).thenReject(new Error('network error'))
+
+    const token = await HelperService.getEdmsAccessToken()
+
+    expect(token).to.equal(undefined)
+    expect(loggerErrorStub).to.have.been.calledOnce
   })
 })

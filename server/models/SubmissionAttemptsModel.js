@@ -1,4 +1,5 @@
-module.exports = (sequelize, DataTypes) => sequelize.define(
+export const SubmissionAttemptsModel = (sequelize, DataTypes) =>
+  sequelize.define(
     'SubmissionAttempts',
     {
       submission_id: {

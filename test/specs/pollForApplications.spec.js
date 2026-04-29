@@ -1,14 +1,23 @@
-const { expect } = require('chai')
-const chai = require('chai')
-const sinon = require('sinon')
-const sinonChai = require('sinon-chai')
-const { Op } = require('sequelize') // Assuming you've imported Sequelize and defined Op.
-const Application = require('../../server/models/index').Application // Replace with the correct path to the Application model.
-const sequelize = require('../../server/models/index').sequelize // Replace with the correct path to your Sequelize instance.
-const pollForApplicationsController = require('../../server/controllers/pollForApplications')
+import chai from 'chai'
+import { Op } from 'sequelize'
+import sinon from 'sinon'
+import sinonChai from 'sinon-chai'
+import { logger } from '../../server/config/logs.js'
+import {
+  checkForEligibleApplications,
+  placeBackInTheQueue,
+  updateApplicationAsProcessing,
+} from '../../server/controllers/pollForApplicationsController.js'
+
+import { Application, sequelize } from '../../server/models/index.js' // Replace with the correct path to the Application model and Sequelize instance.
+
+const expect = chai.expect
 const maxRetryAttempts = 10
 
 chai.use(sinonChai)
+
+let loggerInfoStub
+let loggerErrorStub
 
 describe('checkForEligibleApplications', () => {
   it('should return an eligible application when available', async () => {
@@ -21,7 +30,7 @@ describe('checkForEligibleApplications', () => {
     sinon.stub(Application, 'findOne').resolves(mockApplication)
 
     try {
-      const result = await pollForApplicationsController.checkForEligibleApplications()
+      const result = await checkForEligibleApplications()
       expect(result).to.deep.equal(mockApplication)
       expect(Application.findOne).to.have.been.calledOnceWith({
         where: {
@@ -43,7 +52,7 @@ describe('checkForEligibleApplications', () => {
     sinon.stub(Application, 'findOne').throws(new Error('CRITICAL ERROR TESTING'))
 
     try {
-      const result = await pollForApplicationsController.checkForEligibleApplications()
+      const result = await checkForEligibleApplications()
       expect(result).to.be.undefined
     } catch (error) {
       expect.fail(`Unexpected error: ${error}`)
@@ -72,6 +81,11 @@ describe('isEApp', () => {
 })
 
 describe('updateApplicationAsProcessing', () => {
+  beforeEach(() => {
+    loggerInfoStub = sinon.stub(logger, 'info')
+    loggerErrorStub = sinon.stub(logger, 'error')
+  })
+
   afterEach(() => {
     sinon.restore()
   })
@@ -81,9 +95,8 @@ describe('updateApplicationAsProcessing', () => {
     const isEApp = true
 
     const updateStub = sinon.stub(Application, 'update').resolves([1]) // Resolves with the number of updated rows (1).
-    const consoleLogStub = sinon.stub(console, 'log')
 
-    const result = await pollForApplicationsController.updateApplicationAsProcessing(application_id, isEApp)
+    const result = await updateApplicationAsProcessing(application_id, isEApp)
 
     expect(result).to.deep.equal([1]) // Make sure the result matches the resolved value of the stub.
 
@@ -92,7 +105,7 @@ describe('updateApplicationAsProcessing', () => {
       { where: { application_id: application_id } },
     )
 
-    expect(consoleLogStub).to.have.been.calledOnceWith(`Processing ${application_id} (eApp)`)
+    expect(loggerInfoStub).to.have.been.calledOnceWith(`Processing ${application_id} (eApp)`)
   })
 
   it('should update the application as processing when isEApp is false', async () => {
@@ -100,9 +113,8 @@ describe('updateApplicationAsProcessing', () => {
     const isEApp = false
 
     const updateStub = sinon.stub(Application, 'update').resolves([1]) // Resolves with the number of updated rows (1).
-    const consoleLogStub = sinon.stub(console, 'log')
 
-    const result = await pollForApplicationsController.updateApplicationAsProcessing(application_id, isEApp)
+    const result = await updateApplicationAsProcessing(application_id, isEApp)
 
     expect(result).to.deep.equal([1]) // Make sure the result matches the resolved value of the stub.
 
@@ -111,7 +123,7 @@ describe('updateApplicationAsProcessing', () => {
       { where: { application_id: application_id } },
     )
 
-    expect(consoleLogStub).to.have.been.calledOnceWith(`Processing ${application_id} (paper)`)
+    expect(loggerInfoStub).to.have.been.calledOnceWith(`Processing ${application_id} (paper)`)
   })
 
   it('should handle errors gracefully', async () => {
@@ -120,11 +132,9 @@ describe('updateApplicationAsProcessing', () => {
 
     const errorMessage = 'Some error message'
     const updateStub = sinon.stub(Application, 'update').rejects(new Error(errorMessage))
-    const consoleLogStub = sinon.stub(console, 'log')
-    const consoleErrorStub = sinon.stub(console, 'error')
 
     try {
-      await pollForApplicationsController.updateApplicationAsProcessing(application_id, isEApp)
+      await updateApplicationAsProcessing(application_id, isEApp)
       expect.fail('updateApplicationAsProcessing: Some error message')
     } catch (error) {
       expect(error.message).to.equal(`updateApplicationAsProcessing: ${errorMessage}`)
@@ -135,12 +145,17 @@ describe('updateApplicationAsProcessing', () => {
       { where: { application_id: application_id } },
     )
 
-    expect(consoleLogStub).to.have.been.calledOnce
-    expect(consoleErrorStub).to.have.been.calledOnce
+    expect(loggerInfoStub).to.have.been.calledOnce
+    expect(loggerErrorStub).to.have.been.calledOnce
   })
 })
 
 describe('placeBackInTheQueue', () => {
+  beforeEach(() => {
+    loggerInfoStub = sinon.stub(logger, 'info')
+    loggerErrorStub = sinon.stub(logger, 'error')
+  })
+
   afterEach(() => {
     sinon.restore()
   })
@@ -150,9 +165,8 @@ describe('placeBackInTheQueue', () => {
     const submission_attempts = 5 // Use any number for demonstration purposes
 
     const updateStub = sinon.stub(Application, 'update').resolves([1]) // Resolves with the number of updated rows (1).
-    const consoleLogStub = sinon.stub(console, 'log')
 
-    const result = await pollForApplicationsController.placeBackInTheQueue(application_id, submission_attempts)
+    const result = await placeBackInTheQueue(application_id, submission_attempts)
 
     expect(result).to.deep.equal([1]) // Make sure the result matches the resolved value of the stub.
 
@@ -164,7 +178,7 @@ describe('placeBackInTheQueue', () => {
       { where: { application_id: application_id } },
     )
 
-    expect(consoleLogStub).to.have.been.calledOnceWith(
+    expect(loggerInfoStub).to.have.been.calledOnceWith(
       `Updating ${application_id} submission attempts (${submission_attempts}/${maxRetryAttempts})`,
     )
   })
@@ -175,10 +189,9 @@ describe('placeBackInTheQueue', () => {
 
     const errorMessage = 'Some error message'
     const updateStub = sinon.stub(Application, 'update').rejects(new Error(errorMessage))
-    const consoleErrorStub = sinon.stub(console, 'error')
 
     try {
-      await pollForApplicationsController.placeBackInTheQueue(application_id, submission_attempts)
+      await placeBackInTheQueue(application_id, submission_attempts)
       expect.fail('placeBackInTheQueue: Some error message')
     } catch (error) {
       expect(error.message).to.equal(`placeBackInTheQueue: ${errorMessage}`)
@@ -192,7 +205,7 @@ describe('placeBackInTheQueue', () => {
       { where: { application_id: application_id } },
     )
 
-    // Ensure console.error is called with the error message
-    expect(consoleErrorStub).to.have.been.calledOnceWith(`placeBackInTheQueue: Error: ${errorMessage}`)
+    // Ensure logger.error is called with the error message
+    expect(loggerErrorStub).to.have.been.calledOnceWith(`placeBackInTheQueue: Error: ${errorMessage}`)
   })
 })

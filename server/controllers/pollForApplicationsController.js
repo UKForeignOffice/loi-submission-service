@@ -1,19 +1,24 @@
-const axios = require('axios')
-const config = require('../config/config')
-const ExportedApplicationData = require('../models/index').ExportedApplicationData
-const Application = require('../models/index').Application
-const SubmissionAttempts = require('../models/index').SubmissionAttempts
-const ExportedEAppData = require('../models/index').ExportedEAppData
-const UploadedDocumentUrls = require('../models/index').UploadedDocumentUrls
+import { GetObjectCommand, S3 } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import axios from 'axios'
+import isNumeric from 'isnumeric'
+import { Op } from 'sequelize'
+import { config } from '../config/config.js'
+import { logger } from '../config/logs.js'
+import {
+  Application,
+  ExportedApplicationData,
+  ExportedEAppData,
+  SubmissionAttempts,
+  sequelize,
+  UploadedDocumentUrls,
+} from '../models/index.js'
+import { HelperService } from '../services/HelperService.js'
+
 const maxRetryAttempts = parseInt(config.maxRetryAttempts, 10)
-const { Op } = require('sequelize')
-const { sequelize } = require('../models')
-const { getEdmsAccessToken } = require('../services/HelperService')
-const { getSignedUrl } = require('@aws-sdk/s3-request-presigner')
-const { GetObjectCommand, S3 } = require('@aws-sdk/client-s3')
 const s3 = new S3()
 
-async function checkForApplications() {
+export async function checkForApplications() {
   try {
     const results = await checkForEligibleApplications()
     if (results) {
@@ -21,11 +26,11 @@ async function checkForApplications() {
       await processApplication(application_id, submissionAttempts, serviceType)
     }
   } catch (error) {
-    console.error(`checkForApplications: ${error}`)
+    logger.error(`checkForApplications: ${error}`)
   }
 }
 
-async function checkForEligibleApplications() {
+export async function checkForEligibleApplications() {
   try {
     return await Application.findOne({
       where: {
@@ -37,7 +42,7 @@ async function checkForEligibleApplications() {
       order: sequelize.random(),
     })
   } catch (error) {
-    console.error(`checkForEligibleApplications: ${error}`)
+    logger.error(`checkForEligibleApplications: ${error}`)
   }
 }
 
@@ -48,7 +53,7 @@ async function processApplication(application_id, submission_attempts, service_t
     if (isEApp) {
       const eAppData = await getEAppData(application_id)
       if (!eAppData) {
-        console.log(`No exported app data found for ${application_id}`)
+        logger.error(`No exported app data found for ${application_id}`)
         await updateApplicationAsFailed(application_id)
       } else {
         if (config.nodeEnv.toLowerCase() !== 'development') await generatePresignedUrls(application_id)
@@ -59,7 +64,7 @@ async function processApplication(application_id, submission_attempts, service_t
     } else if (!isEApp) {
       const appData = await getAppData(application_id)
       if (!appData) {
-        console.log(`No exported app data found for ${application_id}`)
+        logger.error(`No exported app data found for ${application_id}`)
         await updateApplicationAsFailed(application_id)
       } else {
         const applicationJsonObject = await generateApplicationObject(appData)
@@ -67,7 +72,7 @@ async function processApplication(application_id, submission_attempts, service_t
       }
     }
   } catch (error) {
-    console.error(`processApplication: ${error}`)
+    logger.error(`processApplication: ${error}`)
   }
 }
 
@@ -79,7 +84,7 @@ async function getEAppData(application_id) {
       },
     })
   } catch (error) {
-    console.error(`getEAppData: ${error}`)
+    logger.error(`getEAppData: ${error}`)
   }
 }
 
@@ -91,7 +96,7 @@ async function getAppData(application_id) {
       },
     })
   } catch (error) {
-    console.error(`getAppData: ${error}`)
+    logger.error(`getAppData: ${error}`)
   }
 }
 
@@ -103,7 +108,7 @@ async function getEAppDocumentUrls(application_id) {
       },
     })
   } catch (error) {
-    console.error(`getEAppDocumentUrls: ${error}`)
+    logger.error(`getEAppDocumentUrls: ${error}`)
   }
 }
 
@@ -121,7 +126,7 @@ async function addPresignedUrlToDB(application_id, url, key) {
       },
     )
   } catch (error) {
-    console.error(`updateUploadedDocumentUrls: ${error}`)
+    logger.error(`updateUploadedDocumentUrls: ${error}`)
   }
 }
 
@@ -133,7 +138,7 @@ async function generatePresignedUrls(application_id) {
     const documents = await getEAppDocumentUrls(application_id)
 
     if (!documents || documents.length === 0) {
-      console.error(`No documents found for application ${application_id}`)
+      logger.error(`No documents found for application ${application_id}`)
       return
     }
 
@@ -145,22 +150,22 @@ async function generatePresignedUrls(application_id) {
 
       try {
         const url = await getSignedUrl(s3, new GetObjectCommand(params), { expiresIn: EXPIRY_SECONDS })
-        console.info(`Presigned URL generated for ${application_id} ${doc.filename}`)
+        logger.info(`Presigned URL generated for ${application_id} ${doc.filename}`)
         await addPresignedUrlToDB(application_id, url, doc.uploaded_url)
       } catch (err) {
-        console.error(`Failed to generate presigned URL for ${application_id} ${doc.filename}: ${err}`)
+        logger.error(`Failed to generate presigned URL for ${application_id} ${doc.filename}: ${err}`)
         throw new Error(err)
       }
     })
 
     await Promise.all(generateUrlPromises)
   } catch (error) {
-    console.error(`generatePresignedUrls: ${error}`)
+    logger.error(`generatePresignedUrls: ${error}`)
   }
 }
 
-async function updateApplicationAsProcessing(application_id, isEApp) {
-  console.log(`Processing ${application_id}${isEApp ? ' (eApp)' : ' (paper)'}`)
+export async function updateApplicationAsProcessing(application_id, isEApp) {
+  logger.info(`Processing ${application_id}${isEApp ? ' (eApp)' : ' (paper)'}`)
   try {
     return await Application.update(
       {
@@ -173,12 +178,12 @@ async function updateApplicationAsProcessing(application_id, isEApp) {
       },
     )
   } catch (error) {
-    console.error(`updateApplicationAsProcessing: ${error}`)
+    logger.error(`updateApplicationAsProcessing: ${error}`)
   }
 }
 
 async function updateApplicationAsFailed(application_id) {
-  console.log(`Marking ${application_id} as failed`)
+  logger.info(`Marking ${application_id} as failed`)
   try {
     return await Application.update(
       {
@@ -191,12 +196,12 @@ async function updateApplicationAsFailed(application_id) {
       },
     )
   } catch (error) {
-    console.error(`updateApplicationAsFailed: ${error}`)
+    logger.error(`updateApplicationAsFailed: ${error}`)
   }
 }
 
-async function placeBackInTheQueue(application_id, submission_attempts) {
-  console.log(`Updating ${application_id} submission attempts (${submission_attempts}/${maxRetryAttempts})`)
+export async function placeBackInTheQueue(application_id, submission_attempts) {
+  logger.info(`Updating ${application_id} submission attempts (${submission_attempts}/${maxRetryAttempts})`)
   try {
     return await Application.update(
       {
@@ -210,12 +215,12 @@ async function placeBackInTheQueue(application_id, submission_attempts) {
       },
     )
   } catch (error) {
-    console.error(`placeBackInTheQueue: ${error}`)
+    logger.error(`placeBackInTheQueue: ${error}`)
   }
 }
 
 async function updateApplicationAsSubmitted(application_id, response, submission_attempts) {
-  console.log(`Marking ${application_id} as submitted`)
+  logger.info(`Marking ${application_id} as submitted`)
   try {
     return await Application.update(
       {
@@ -231,7 +236,7 @@ async function updateApplicationAsSubmitted(application_id, response, submission
       },
     )
   } catch (error) {
-    console.error(`updateApplicationAsSubmitted: ${error}`)
+    logger.error(`updateApplicationAsSubmitted: ${error}`)
   }
 }
 
@@ -267,7 +272,7 @@ async function generateEAppObject(eAppData, eAppDocumentUrls) {
       },
     }
   } catch (error) {
-    console.error(`generateEAppObject: ${error}`)
+    logger.error(`generateEAppObject: ${error}`)
   }
 }
 
@@ -278,7 +283,7 @@ function generateDocumentArray(eAppDocumentUrls) {
       downloadUrl: document.presigned_url || document.uploaded_url,
     }))
   } catch (error) {
-    console.error(`generateDocumentArray: ${error}`)
+    logger.error(`generateDocumentArray: ${error}`)
   }
 }
 
@@ -287,7 +292,7 @@ async function postToOrbit(applicationJsonObject, application_id, submission_att
   const signal = controller.signal
 
   const edmsSubmissionApiUrl = `${config.edmsHost}/api/v1/submitApplication`
-  const edmsBearerToken = await getEdmsAccessToken()
+  const edmsBearerToken = await HelperService.getEdmsAccessToken()
   const this_submission_attempt = submission_attempts + 1
   const startTime = new Date()
 
@@ -306,7 +311,7 @@ async function postToOrbit(applicationJsonObject, application_id, submission_att
     const elapsedTime = endTime - startTime
 
     if (response && response.status === 200) {
-      console.log(`Orbit submit application request response time: ${elapsedTime}ms`)
+      logger.info(`Orbit submit application request response time: ${elapsedTime}ms`)
       await updateApplicationAsSubmitted(application_id, response, this_submission_attempt)
       await logSubmissionAttempt(
         application_id,
@@ -317,7 +322,7 @@ async function postToOrbit(applicationJsonObject, application_id, submission_att
         response.data,
       )
     } else {
-      console.log(`Orbit submit application request response time: ${elapsedTime}ms`)
+      logger.info(`Orbit submit application request response time: ${elapsedTime}ms`)
       controller.abort()
       await placeBackInTheQueue(application_id, this_submission_attempt)
       await logSubmissionAttempt(
@@ -334,7 +339,7 @@ async function postToOrbit(applicationJsonObject, application_id, submission_att
     }
   } catch (error) {
     controller.abort()
-    console.error(`postToOrbit: ${error}`)
+    logger.error(`postToOrbit: ${error}`)
     await placeBackInTheQueue(application_id, this_submission_attempt)
     await logSubmissionAttempt(application_id, this_submission_attempt, applicationJsonObject, 'failed', null, null)
     if (this_submission_attempt === maxRetryAttempts) {
@@ -361,7 +366,7 @@ function logSubmissionAttempt(
       response_body: JSON.stringify(response_body),
     })
   } catch (error) {
-    console.error(`logSubmissionAttempt: ${error}`)
+    logger.error(`logSubmissionAttempt: ${error}`)
   }
 }
 
@@ -443,7 +448,6 @@ function generateApplicationObject(results) {
   }
 
   function updateSubmissionJSON(type, house) {
-    const isNumeric = require('isnumeric')
     const house_name = house.toString().split(' ')
     const apartments = house.indexOf('Apartments')
     const flats = house.indexOf('Flat')
@@ -628,11 +632,4 @@ function generateApplicationObject(results) {
   }
 
   return obj
-}
-
-module.exports = {
-  checkForApplications,
-  checkForEligibleApplications,
-  updateApplicationAsProcessing,
-  placeBackInTheQueue,
 }
