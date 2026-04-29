@@ -1,7 +1,6 @@
 import { GetObjectCommand, S3 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import axios from 'axios'
-import isNumeric from 'isnumeric'
 import { Op } from 'sequelize'
 import { config } from '../config/config.js'
 import { logger } from '../config/logs.js'
@@ -15,6 +14,7 @@ import {
 } from '../models/index.js'
 import { HelperService } from '../services/HelperService.js'
 
+const isNumeric = (value) => !Number.isNaN(parseFloat(value)) && Number.isFinite(value)
 const maxRetryAttempts = parseInt(config.maxRetryAttempts, 10)
 const s3 = new S3()
 
