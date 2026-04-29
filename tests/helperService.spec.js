@@ -1,23 +1,20 @@
-import chai from 'chai'
-import sinon from 'sinon'
-import sinonChai from 'sinon-chai'
-import * as td from 'testdouble'
-import { config } from '../../server/config/config.js'
-import { logger } from '../../server/config/logs.js'
-
-chai.use(sinonChai)
-const { expect } = chai
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { config } from '../server/config/config.js'
 
 describe('HelperService.getEdmsAccessToken', () => {
   let HelperService
   let axiosStub
   let originalConfig
-
   let loggerErrorStub
 
   beforeEach(async () => {
-    axiosStub = td.function()
-    HelperService = (await import(`../../server/services/HelperService.js?update=${Date.now()}`)).HelperService
+    vi.resetModules()
+    axiosStub = vi.fn()
+    HelperService = (await import('../server/services/HelperService.js')).HelperService
+
+    // Re-import logger after resetModules so we spy on the same instance HelperService uses
+    const { logger } = await import('../server/config/logs.js')
+    loggerErrorStub = vi.spyOn(logger, 'error').mockImplementation(() => {})
 
     originalConfig = {
       edmsBearerToken: config.edmsBearerToken,
@@ -30,44 +27,40 @@ describe('HelperService.getEdmsAccessToken', () => {
     }
     config.edmsAuthHost = 'https://example.org/token'
     config.edmsAuthScope = 'submission:write'
-
-    loggerErrorStub = sinon.stub(logger, 'error')
   })
 
   afterEach(() => {
-    td.reset()
-    sinon.restore()
+    vi.restoreAllMocks()
     config.edmsBearerToken = originalConfig.edmsBearerToken
     config.edmsAuthHost = originalConfig.edmsAuthHost
     config.edmsAuthScope = originalConfig.edmsAuthScope
   })
 
   it('fetches token from EDMS then returns cached token on subsequent call', async () => {
-    td.when(axiosStub(td.matchers.anything())).thenResolve({ data: { access_token: 'token-123' } })
+    axiosStub.mockResolvedValue({ data: { access_token: 'token-123' } })
 
     const first = await HelperService.getEdmsAccessToken({ axiosInstance: axiosStub })
     const second = await HelperService.getEdmsAccessToken({ axiosInstance: axiosStub })
 
-    expect(first).to.equal('token-123')
-    expect(second).to.equal('token-123')
-    // Optionally check call count with testdouble if needed
+    expect(first).toBe('token-123')
+    expect(second).toBe('token-123')
   })
 
   it('returns undefined and logs when EDMS request fails', async () => {
-    td.when(axiosStub(td.matchers.anything())).thenReject(new Error('network error'))
+    axiosStub.mockRejectedValue(new Error('network error'))
 
     const token = await HelperService.getEdmsAccessToken({ axiosInstance: axiosStub })
 
-    expect(token).to.equal(undefined)
-    expect(loggerErrorStub).to.have.been.calledOnce
+    expect(token).toBeUndefined()
+    expect(loggerErrorStub).toHaveBeenCalledOnce()
   })
 
-  it('returns undefined and logs when EDMS request fails', async () => {
-    td.when(axiosStub(td.matchers.anything())).thenReject(new Error('network error'))
+  it('returns undefined and logs when EDMS request fails without axiosInstance', async () => {
+    axiosStub.mockRejectedValue(new Error('network error'))
 
     const token = await HelperService.getEdmsAccessToken()
 
-    expect(token).to.equal(undefined)
-    expect(loggerErrorStub).to.have.been.calledOnce
+    expect(token).toBeUndefined()
+    expect(loggerErrorStub).toHaveBeenCalledOnce()
   })
 })

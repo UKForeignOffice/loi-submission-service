@@ -1,14 +1,18 @@
 import { config as dotenv } from 'dotenv'
+import { bearerToken } from './edms.js'
 
 dotenv()
 
 const additionalPaymentApiUrl = process.env.ADDITIONALPAYMENTAPIURL
-const dbConn = process.env.DBCONN
+const dbConn = process.env.DBCONN || 'postgres://postgres:password@localhost:5432/FCO-LOI-Service'
 const edmsAuthHost = process.env.EDMS_AUTH_HOST
 const edmsAuthScope = process.env.EDMS_AUTH_SCOPE
-const edmsBearerToken = JSON.parse(process.env.EDMS_BEARER_TOKEN)
+const edmsBearerToken = {
+  ...bearerToken,
+  ...(process.env.EDMS_BEARER_TOKEN ? JSON.parse(process.env.EDMS_BEARER_TOKEN) : {}),
+}
 const edmsHost = process.env.EDMS_HOST
-const maxRetryAttempts = process.env.MAXRETRYATTEMPTS
+const maxRetryAttempts = process.env.MAXRETRYATTEMPTS || 10
 const pollInterval = process.env.POLLINTERVAL
 const submissionApiUrl = process.env.SUBMISSIONAPIURL
 const nodeEnv = process.env.NODE_ENV || 'production'
