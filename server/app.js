@@ -1,8 +1,8 @@
 import bodyParser from 'body-parser'
 import express from 'express'
 import { config } from './config/config.js'
-import pollForAdditionalPaymentsController from './controllers/pollForAdditionalPaymentsController.js'
-import pollForApplicationsController from './controllers/pollForApplicationsController.js'
+import { checkForApplications } from './controllers/pollForAdditionalPaymentsController.js'
+import { checkForAdditionalPayments } from './controllers/pollForApplicationsController.js'
 
 // Create our Express application
 const app = express()
@@ -16,7 +16,7 @@ app.use(
   }),
 )
 
-setInterval(() => pollForApplicationsController.checkForApplications(), config.pollInterval)
-setInterval(() => pollForAdditionalPaymentsController.checkForAdditionalPayments(), config.pollInterval)
+setInterval(() => checkForApplications(), config.pollInterval)
+setInterval(() => checkForAdditionalPayments(), config.pollInterval)
 
 export { app }
