@@ -19,21 +19,13 @@
   },
   "scripts": {
     "start": "node ./server/server.js",
-    "test": "NODE_ENV=test PORT=6000 node node_modules/mocha/bin/_mocha 'test/**/*.js' --recursive",
-    "test-report": "npx mocha --recursive test/ --reporter mocha-junit-reporter",
-    "test:vitest": "vitest run",
+    "test": "vitest run",
     "format": "biome check --write .",
     "quality": "biome check --changed --since=develop"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.13",
-    "vitest": "^4.1.5",
-    "chai": "^4.3.7",
-    "mocha": "^10.2.0",
-    "mocha-junit-reporter": "^2.2.0",
-    "sinon": "^18.0.1",
-    "sinon-chai": "^3.7.0",
-    "testdouble": "^3.20.2"
+    "vitest": "^4.1.5"
   },
   "overrides": {
     "axios": "1.13.6",
