@@ -1,8 +1,8 @@
 import bodyParser from 'body-parser'
 import express from 'express'
 import { config } from './config/config.js'
-import { checkForApplications } from './controllers/pollForAdditionalPaymentsController.js'
-import { checkForAdditionalPayments } from './controllers/pollForApplicationsController.js'
+import { checkForAdditionalPayments } from './controllers/pollForAdditionalPaymentsController.js'
+import { checkForApplications } from './controllers/pollForApplicationsController.js'
 
 // Create our Express application
 const app = express()
