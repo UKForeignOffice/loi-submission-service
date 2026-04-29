@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.13",
+    "vitest": "^4.1.5",
     "chai": "^4.3.7",
     "mocha": "^10.2.0",
     "mocha-junit-reporter": "^2.2.0",
