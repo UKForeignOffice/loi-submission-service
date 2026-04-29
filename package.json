@@ -14,7 +14,7 @@
     "axios": "1.15.2",
     "body-parser": "^2.2.2",
     "dotenv": "^17.4.2",
-    "express": "^4.21.0",
+    "express": "^5.2.1",
     "node-cache": "^5.1.2",
     "pg": "^8.20.0",
     "pg-hstore": "^2.3.4",
