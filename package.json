@@ -21,6 +21,7 @@
     "start": "node ./server/server.js",
     "test": "NODE_ENV=test PORT=6000 node node_modules/mocha/bin/_mocha 'test/**/*.js' --recursive",
     "test-report": "npx mocha --recursive test/ --reporter mocha-junit-reporter",
+    "test:vitest": "vitest run",
     "format": "biome check --write .",
     "quality": "biome check --changed --since=develop"
   },
