@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { checkForAdditionalPaymentsController } from '../server/controllers/pollForAdditionalPaymentsController.js'
+import { checkForAdditionalPayments } from '../server/controllers/pollForAdditionalPaymentsController.js'
 import { AdditionalPaymentDetails } from '../server/models/index.js'
 
 describe('pollForAdditionalPayments flow', () => {
@@ -23,7 +23,7 @@ describe('pollForAdditionalPayments flow', () => {
     const updateStub = vi.spyOn(AdditionalPaymentDetails, 'update').mockResolvedValue([1])
     const postStub = vi.spyOn(axios, 'post').mockResolvedValue({ status: 200 })
 
-    await checkForAdditionalPaymentsController.checkForAdditionalPayments()
+    await checkForAdditionalPayments()
 
     expect(postStub).toHaveBeenCalledOnce()
     expect(updateStub).toHaveBeenCalledTimes(2)

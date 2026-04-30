@@ -2,10 +2,8 @@ import { Op } from 'sequelize'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { config } from '../server/config/config.js'
 import { logger } from '../server/config/logs.js'
-import { checkForAdditionalPaymentsController } from '../server/controllers/pollForAdditionalPaymentsController.js'
+import { checkForAdditionalPayments } from '../server/controllers/pollForAdditionalPaymentsController.js'
 import { AdditionalPaymentDetails, sequelize } from '../server/models/index.js'
-
-const { checkForAdditionalPayments } = checkForAdditionalPaymentsController
 
 describe('pollForAdditionalPaymentsController.checkForAdditionalPayments', () => {
   let loggerErrorStub
