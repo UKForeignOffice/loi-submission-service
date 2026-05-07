@@ -8,4 +8,4 @@ WORKDIR /opt/app
 COPY --from=build /opt/app ./
 COPY . ./
 EXPOSE 3005
-CMD ["node", "server/bin/www", "3005"]
+CMD ["node", "server/server.js", "3005"]
