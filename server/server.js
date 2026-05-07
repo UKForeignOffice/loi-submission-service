@@ -1,5 +1,6 @@
 import http from 'node:http'
 import express from 'express'
+const express2 = require('express')
 import { app } from './app.js'
 import { logger } from './config/logs.js'
 
