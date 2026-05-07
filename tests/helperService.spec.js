@@ -42,7 +42,7 @@ describe('HelperService.getEdmsAccessToken', () => {
     const first = await HelperService.getEdmsAccessToken({ axiosInstance: axiosStub })
     const second = await HelperService.getEdmsAccessToken({ axiosInstance: axiosStub })
 
-    expect(first).toBe('token-123')
+    expect(first).toBe('token-12333243')
     expect(second).toBe('token-123')
   })
 
