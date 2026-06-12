@@ -14,7 +14,7 @@ import {
 } from '../models/index.js'
 import { HelperService } from '../services/HelperService.js'
 
-const isNumeric = (value) => !Number.isNaN(parseFloat(value)) && Number.isFinite(value)
+const isNumeric = (value) => !Number.isNaN(parseFloat(value)) && Number.isFinite(parseFloat(value))
 const maxRetryAttempts = parseInt(config.maxRetryAttempts, 10)
 const s3 = new S3()
 
