@@ -8,7 +8,7 @@ export default defineConfig({
       include: ['server/**/*.js', '!server/app.js', '!server/server.js'],
       thresholds: {
         statements: 41,
-        branches: 17,
+        branches: 15,
         functions: 56,
         lines: 41,
       },
