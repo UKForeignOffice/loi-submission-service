@@ -14,7 +14,7 @@ import {
 } from '../models/index.js'
 import { HelperService } from '../services/HelperService.js'
 
-const isNumeric = (value) => !Number.isNaN(parseFloat(value)) && Number.isFinite(value)
+const isNumeric = (value) => !Number.isNaN(parseFloat(value)) && Number.isFinite(parseFloat(value))
 const maxRetryAttempts = parseInt(config.maxRetryAttempts, 10)
 const s3 = new S3()
 
@@ -295,6 +295,8 @@ async function postToOrbit(applicationJsonObject, application_id, submission_att
   const edmsBearerToken = await HelperService.getEdmsAccessToken()
   const this_submission_attempt = submission_attempts + 1
   const startTime = new Date()
+
+  logger.info(`Submitting payload for ${application_id}: ${JSON.stringify(applicationJsonObject)}`)
 
   try {
     if (!edmsBearerToken) throw new Error('Error fetching access token')
