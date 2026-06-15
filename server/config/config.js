@@ -1,7 +1,7 @@
 import { config as dotenv } from 'dotenv'
 import { bearerToken } from './edms.js'
 
-dotenv()
+dotenv({ quiet: true })
 
 const additionalPaymentApiUrl = process.env.ADDITIONALPAYMENTAPIURL
 const dbConn = process.env.DBCONN || 'postgres://postgres:password@localhost:5432/FCO-LOI-Service'
