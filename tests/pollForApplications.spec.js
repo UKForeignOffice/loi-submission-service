@@ -91,10 +91,7 @@ describe('updateApplicationAsProcessing', () => {
     expect(updateStub).toHaveBeenCalledOnce()
     expect(updateStub).toHaveBeenCalledWith({ submitted: 'processing' }, { where: { application_id: application_id } })
     expect(loggerInfoStub).toHaveBeenCalledOnce()
-    expect(loggerInfoStub).toHaveBeenCalledWith(`Processing ${application_id} (eApp)`, {
-      application_id: 12345,
-      isEApp: true,
-    })
+    expect(loggerInfoStub).toHaveBeenCalledWith(`Processing ${application_id} (eApp)`)
   })
 
   it('should update the application as processing when isEApp is false', async () => {
@@ -109,10 +106,7 @@ describe('updateApplicationAsProcessing', () => {
     expect(updateStub).toHaveBeenCalledOnce()
     expect(updateStub).toHaveBeenCalledWith({ submitted: 'processing' }, { where: { application_id: application_id } })
     expect(loggerInfoStub).toHaveBeenCalledOnce()
-    expect(loggerInfoStub).toHaveBeenCalledWith(`Processing ${application_id} (paper)`, {
-      application_id: 67890,
-      isEApp: false,
-    })
+    expect(loggerInfoStub).toHaveBeenCalledWith(`Processing ${application_id} (paper)`)
   })
 
   it('should handle errors gracefully', async () => {
@@ -129,10 +123,7 @@ describe('updateApplicationAsProcessing', () => {
     expect(updateStub).toHaveBeenCalledWith({ submitted: 'processing' }, { where: { application_id: application_id } })
     expect(loggerInfoStub).toHaveBeenCalledOnce()
     expect(loggerErrorStub).toHaveBeenCalledOnce()
-    expect(loggerErrorStub).toHaveBeenCalledWith(`Error in updateApplicationAsProcessing for ${application_id}`, {
-      application_id,
-      error: new Error(errorMessage),
-    })
+    expect(loggerErrorStub).toHaveBeenCalledWith(`Error in updateApplicationAsProcessing: Error: ${errorMessage}`)
   })
 })
 
@@ -166,7 +157,6 @@ describe('placeBackInTheQueue', () => {
     expect(loggerInfoStub).toHaveBeenCalledOnce()
     expect(loggerInfoStub).toHaveBeenCalledWith(
       `Updating ${application_id} submission attempts (${submission_attempts}/${maxRetryAttempts})`,
-      { application_id, maxRetryAttempts, submission_attempts },
     )
   })
 
@@ -189,9 +179,6 @@ describe('placeBackInTheQueue', () => {
       { where: { application_id: application_id } },
     )
     expect(loggerErrorStub).toHaveBeenCalledOnce()
-    expect(loggerErrorStub).toHaveBeenCalledWith(`Error in placeBackInTheQueue for ${application_id}`, {
-      application_id,
-      error: new Error(errorMessage),
-    })
+    expect(loggerErrorStub).toHaveBeenCalledWith(`Error in placeBackInTheQueue: Error: ${errorMessage}`)
   })
 })

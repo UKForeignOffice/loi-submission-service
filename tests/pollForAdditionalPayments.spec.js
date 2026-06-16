@@ -42,8 +42,6 @@ describe('pollForAdditionalPaymentsController.checkForAdditionalPayments', () =>
     await checkForAdditionalPayments()
 
     expect(loggerErrorStub).toHaveBeenCalledOnce()
-    expect(loggerErrorStub).toHaveBeenCalledWith('Error checking for eligible additional payments', {
-      error: expectedError,
-    })
+    expect(loggerErrorStub).toHaveBeenCalledWith('Error in checkForEligibleAdditionalPayments: Error: database unavailable')
   })
 })
