@@ -296,7 +296,8 @@ async function postToOrbit(applicationJsonObject, application_id, submission_att
   const this_submission_attempt = submission_attempts + 1
   const startTime = new Date()
 
-  logger.info(`Submitting payload for ${application_id}: ${JSON.stringify(applicationJsonObject)}`)
+  logger.info(`Submitting payload for ${application_id}`)
+  logger.debug(`Payload: ${JSON.stringify(applicationJsonObject)}`)
 
   try {
     if (!edmsBearerToken) throw new Error('Error fetching access token')
