@@ -1,6 +1,20 @@
 # Monthly patching
 
-Add a dated section after each month's dependency review. Record resolved versions, the reason for each change, and any findings left for follow-up.
+Insert each new `## YYYY-MM-DD` entry immediately below these instructions,
+before older entries (reverse date order, newest first). Include only a
+**Dependency / From / To / Why** table listing patched dependencies or override
+changes, actual old/new versions and one short reason each. Preserve earlier
+entries; do not copy their verbose sections. Keep audits, test output,
+commands, hashes and artifact details in separate review evidence; report
+unresolved findings in the handoff, not extra log sections.
+
+## 2026-11-16
+
+| Dependency | From | To | Why |
+| --- | --- | --- | --- |
+| `follow-redirects` | 1.16.1 | 1.16.3 | Prevent custom credentials leaking across redirects. |
+| `@aws-sdk/xml-builder` | 3.972.21 | 3.972.43 | Remove the vulnerable fast-xml-parser dependency and its XML parsing denial-of-service finding. |
+| `@smithy/types` | 4.14.1 | 4.20.0 | Support the updated XML builder dependency. |
 
 ## 2026-10-27
 
@@ -14,9 +28,3 @@ Add a dated section after each month's dependency review. Record resolved versio
 | `proxy-addr` (lockfile) | 2.0.7 | 2.0.8 | Fix IPv4-mapped IPv6 trust-subnet IP spoofing. |
 | `source-map-js` (lockfile) | 1.2.1 | 1.2.2 | Fix event-loop denial of service through source-map offsets. |
 | `vite` (lockfile) | 8.3.0 | 8.3.5 | Fix dev-server/editor and file-access advisories. |
-
-The initial full audit reported 10 findings (1 critical, 5 high, 4 moderate). After compatible updates, full and production audits both report zero findings. No overrides or major upgrades were required. The existing local `.npmrc` release-age policy was retained.
-
-`npm ci --ignore-scripts` passed. The coverage-enabled unit suite passed: 6 files and 26 tests; all coverage thresholds passed. The explicit Biome check of `package.json` and `git diff --check` passed. `npm run quality` processed no files because its branch comparison does not include these uncommitted changes.
-
-The full local Docker stack was rebuilt with the patched dependencies. App and verify returned HTTP 200, all five internal service checks passed, and PostgreSQL, Redis, ClamAV and pgAdmin responded. Running service dependency versions matched the patched lockfiles. Existing databases and Orbit stub state were retained; live payment, email and address-provider transactions were not exercised.
